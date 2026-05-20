@@ -1,20 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Settings, WalletCards, CalendarDays, Plus, Trash2, CheckCircle2, CreditCard, ArrowLeftRight, Lock, Eye, EyeOff, Repeat } from "lucide-react";
-
-function cn(...classes) { return classes.filter(Boolean).join(" "); }
-function Button({ children, className = "", variant = "default", size, ...props }) {
-  const base = "inline-flex items-center justify-center font-medium transition disabled:opacity-50 disabled:pointer-events-none";
-  const variants = {
-    default: "bg-slate-950 text-white hover:bg-slate-800",
-    secondary: "bg-white text-slate-950 hover:bg-slate-50 border border-slate-200",
-    destructive: "bg-red-600 text-white hover:bg-red-700",
-  };
-  const sizes = size === "sm" ? "px-3 py-2 text-sm" : "px-4 py-3";
-  return <button className={cn(base, variants[variant] || variants.default, sizes, className)} {...props}>{children}</button>;
-}
-function Card({ children, className = "" }) { return <div className={cn("border border-slate-200 bg-white shadow-sm", className)}>{children}</div>; }
-function CardContent({ children, className = "" }) { return <div className={className}>{children}</div>; }
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 const STORAGE_KEY = "financial-autopilot-v2";
 
@@ -36,7 +24,7 @@ const emptyState = {
   pocketCurrent: 0,
   motherPercent: 10,
   savingsPercent: 35,
-  savingsMode: "buffer",
+  savingsMode: "buffer", // buffer | distributed
   bufferGoal: 300000,
   longTermYearGoal: 144000,
   longTermPaidThisYear: 0,
@@ -161,16 +149,26 @@ function calcPlan(s) {
   };
 }
 
+function inputNumberValue(value) {
+  return value === 0 || value === "0" || value === null || value === undefined ? "" : value;
+}
+
+function parseNumberInput(raw) {
+  return raw === "" ? "" : Number(raw);
+}
+
 function Field({ label, value, onChange, type = "number", suffix, placeholder }) {
+  const displayValue = type === "number" ? inputNumberValue(value) : value;
+
   return (
     <label className="block space-y-1">
       <span className="text-sm text-slate-600">{label}</span>
       <div className="flex items-center rounded-xl border bg-white px-3 py-2">
         <input
           type={type}
-          value={value}
+          value={displayValue}
           placeholder={placeholder}
-          onChange={(e) => onChange(type === "number" ? Number(e.target.value) : e.target.value)}
+          onChange={(e) => onChange(type === "number" ? parseNumberInput(e.target.value) : e.target.value)}
           className="w-full bg-transparent outline-none"
         />
         {suffix && <span className="text-slate-400">{suffix}</span>}
@@ -182,10 +180,12 @@ function Field({ label, value, onChange, type = "number", suffix, placeholder })
 function LockScreen({ state, update, onUnlock }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+
   const submit = () => {
     if (pin === state.pin) onUnlock();
     else setError("Неверный PIN");
   };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <Card className="w-full max-w-sm rounded-3xl">
@@ -193,7 +193,15 @@ function LockScreen({ state, update, onUnlock }) {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white"><Lock /></div>
           <h1 className="text-2xl font-bold">Финансовый автопилот</h1>
           <p className="text-sm text-slate-500">Введите PIN для доступа к данным на этом устройстве.</p>
-          <input type="password" inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} className="w-full rounded-2xl border px-4 py-3 text-center text-xl outline-none" placeholder="PIN" />
+          <input
+            type="password"
+            inputMode="numeric"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            className="w-full rounded-2xl border px-4 py-3 text-center text-xl outline-none"
+            placeholder="PIN"
+          />
           {error && <div className="text-sm text-red-500">{error}</div>}
           <Button onClick={submit} className="h-12 w-full rounded-2xl">Открыть</Button>
           <button onClick={() => update({ hideAmounts: true })} className="text-xs text-slate-400">PIN защищает от случайного просмотра. Для сильной защиты нужен следующий этап: шифрование.</button>
@@ -206,10 +214,12 @@ function LockScreen({ state, update, onUnlock }) {
 function Setup({ update }) {
   const [draft, setDraft] = useState({ ...emptyState, salary: "", pin: "" });
   const patch = (p) => setDraft((d) => ({ ...d, ...p }));
+
   const finish = () => {
     const salary = Number(draft.salary || 0);
     const advanceAmount = draft.manualIncome ? Number(draft.advanceAmount || 0) : salary * Number(draft.advancePercent || 40) / 100;
     const salaryAmount = draft.manualIncome ? Number(draft.salaryAmount || 0) : salary * Number(draft.salaryPercent || 60) / 100;
+
     update({
       ...draft,
       configured: true,
@@ -222,15 +232,28 @@ function Setup({ update }) {
       subscriptions: [],
     });
   };
+
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-6">
       <div className="mx-auto max-w-md space-y-4">
-        <div><h1 className="text-3xl font-bold">Первичная настройка</h1><p className="text-slate-500">Данные сохранятся только в браузере этого устройства.</p></div>
+        <div>
+          <h1 className="text-3xl font-bold">Первичная настройка</h1>
+          <p className="text-slate-500">Данные сохранятся только в браузере этого устройства.</p>
+        </div>
         <Card className="rounded-3xl"><CardContent className="space-y-4 p-5">
           <Field label="Зарплата в месяц" value={draft.salary} onChange={(v)=>patch({salary:v})} placeholder="Например 150000" />
-          <div className="grid grid-cols-2 gap-3"><Field label="Аванс" value={draft.advancePercent} onChange={(v)=>patch({advancePercent:v, salaryPercent: 100 - v})} suffix="%" /><Field label="Зарплата" value={draft.salaryPercent} onChange={(v)=>patch({salaryPercent:v, advancePercent: 100 - v})} suffix="%" /></div>
-          <div className="grid grid-cols-2 gap-3"><Field label="День аванса" value={draft.advanceDay} onChange={(v)=>patch({advanceDay:v})} /><Field label="День зарплаты" value={draft.salaryDay} onChange={(v)=>patch({salaryDay:v})} /></div>
-          <div className="grid grid-cols-2 gap-3"><Field label="Карманные" value={draft.pocketPercent} onChange={(v)=>patch({pocketPercent:v})} suffix="%" /><Field label="Матушке" value={draft.motherPercent} onChange={(v)=>patch({motherPercent:v})} suffix="%" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Аванс" value={draft.advancePercent} onChange={(v)=>patch({advancePercent:v, salaryPercent: 100 - v})} suffix="%" />
+            <Field label="Зарплата" value={draft.salaryPercent} onChange={(v)=>patch({salaryPercent:v, advancePercent: 100 - v})} suffix="%" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="День аванса" value={draft.advanceDay} onChange={(v)=>patch({advanceDay:v})} />
+            <Field label="День зарплаты" value={draft.salaryDay} onChange={(v)=>patch({salaryDay:v})} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Карманные" value={draft.pocketPercent} onChange={(v)=>patch({pocketPercent:v})} suffix="%" />
+            <Field label="Матушке" value={draft.motherPercent} onChange={(v)=>patch({motherPercent:v})} suffix="%" />
+          </div>
           <Field label="Накопления" value={draft.savingsPercent} onChange={(v)=>patch({savingsPercent:v})} suffix="%" />
           <Field label="PIN-код" value={draft.pin} type="password" onChange={(v)=>patch({pin:v})} placeholder="4–6 цифр" />
           <Button disabled={!draft.salary || !draft.pin} onClick={finish} className="h-12 w-full rounded-2xl">Создать автопилот</Button>
@@ -247,7 +270,15 @@ function Checklist({ state, plan, title, date }) {
       <div><h2 className="text-2xl font-semibold">{title}</h2><p className="text-slate-500">Средняя дата: {date} число. Поступило: {amountVisible(state, plan.income)}</p></div>
       <div className="space-y-3">
         {plan.items.map((it, idx) => (
-          <Card key={idx} className="rounded-2xl"><CardContent className="flex gap-3 p-4"><button onClick={() => setDone({ ...done, [idx]: !done[idx] })} className="pt-1">{done[idx] ? <CheckCircle2 className="h-6 w-6"/> : <div className="h-6 w-6 rounded-full border-2"/>}</button><div className="flex-1"><div className="flex items-start justify-between gap-3"><div className={done[idx] ? "line-through text-slate-400" : ""}><div className="font-medium">{it.title}</div><div className="text-sm text-slate-500">{it.note}</div></div><div className="whitespace-nowrap text-lg font-semibold">{amountVisible(state, it.amount)}</div></div></div></CardContent></Card>
+          <Card key={idx} className="rounded-2xl"><CardContent className="flex gap-3 p-4">
+            <button onClick={() => setDone({ ...done, [idx]: !done[idx] })} className="pt-1">
+              {done[idx] ? <CheckCircle2 className="h-6 w-6"/> : <div className="h-6 w-6 rounded-full border-2"/>}
+            </button>
+            <div className="flex-1"><div className="flex items-start justify-between gap-3">
+              <div className={done[idx] ? "line-through text-slate-400" : ""}><div className="font-medium">{it.title}</div><div className="text-sm text-slate-500">{it.note}</div></div>
+              <div className="whitespace-nowrap text-lg font-semibold">{amountVisible(state, it.amount)}</div>
+            </div></div>
+          </CardContent></Card>
         ))}
       </div>
       <Card className="rounded-2xl bg-slate-950 text-white"><CardContent className="p-4"><div className="flex justify-between"><span>После распределения на Основной</span><b>0 ₽</b></div></CardContent></Card>
@@ -255,7 +286,7 @@ function Checklist({ state, plan, title, date }) {
   );
 }
 
-export default function App() {
+function App() {
   const [state, update, reset] = useLocalState();
   const [locked, setLocked] = useState(Boolean(state.configured && state.pin));
   const [tab, setTab] = useState("home");
@@ -270,20 +301,46 @@ export default function App() {
   const addSub = () => update({ subscriptions: [...state.subscriptions, { id: safeId(), name: "Новая подписка", price: 0, periodMonths: 12, active: true }] });
   const changeSub = (id, patch) => update({ subscriptions: state.subscriptions.map(x => x.id === id ? { ...x, ...patch } : x) });
   const deleteSub = (id) => update({ subscriptions: state.subscriptions.filter(x => x.id !== id) });
-  const NavButton = ({id, icon: Icon, label}) => <button onClick={() => setTab(id)} className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-xs ${tab === id ? "bg-slate-950 text-white" : "text-slate-500"}`}><Icon className="h-5 w-5"/>{label}</button>;
+
+  const NavButton = ({id, icon: Icon, label}) => (
+    <button onClick={() => setTab(id)} className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-xs ${tab === id ? "bg-slate-950 text-white" : "text-slate-500"}`}>
+      <Icon className="h-5 w-5"/>{label}
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950">
       <div className="mx-auto max-w-md px-4 pb-28 pt-5"><motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} className="space-y-4">
-        {tab === "home" && <div className="space-y-4"><div className="flex items-start justify-between gap-3"><div><h1 className="text-3xl font-bold">Финансовый автопилот</h1><p className="text-slate-500">Настроил правила → пришли деньги → сделал переводы.</p></div><button onClick={() => update({ hideAmounts: !state.hideAmounts })} className="rounded-2xl bg-white p-3">{state.hideAmounts ? <Eye/> : <EyeOff/>}</button></div><div className="grid grid-cols-2 gap-3"><Card className="rounded-2xl"><CardContent className="p-4"><div className="text-sm text-slate-500">Аванс</div><div className="text-2xl font-bold">{amountVisible(state, plan.advance)}</div><div className="text-sm">{state.advanceDay} число</div></CardContent></Card><Card className="rounded-2xl"><CardContent className="p-4"><div className="text-sm text-slate-500">Зарплата</div><div className="text-2xl font-bold">{amountVisible(state, plan.salaryPart)}</div><div className="text-sm">{state.salaryDay} число</div></CardContent></Card></div><Button onClick={() => setTab("advance")} className="h-16 w-full rounded-2xl text-lg">Пришёл аванс</Button><Button onClick={() => setTab("salary")} variant="secondary" className="h-16 w-full rounded-2xl text-lg">Пришла зарплата</Button><Card className="rounded-2xl"><CardContent className="space-y-2 p-4"><div className="flex justify-between"><span>Минимум накоплений</span><b>{amountVisible(state, plan.monthlySavings)}</b></div><div className="flex justify-between"><span>Лимит карманных</span><b>{amountVisible(state, plan.pocketLimit)}</b></div><div className="flex justify-between"><span>Режим</span><b>{state.savingsMode === "buffer" ? "Собираю подушку" : "Подушка собрана"}</b></div></CardContent></Card></div>}
+        {tab === "home" && <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3"><div><h1 className="text-3xl font-bold">Финансовый автопилот</h1><p className="text-slate-500">Настроил правила → пришли деньги → сделал переводы.</p></div><button onClick={() => update({ hideAmounts: !state.hideAmounts })} className="rounded-2xl bg-white p-3">{state.hideAmounts ? <Eye/> : <EyeOff/>}</button></div>
+          <div className="grid grid-cols-2 gap-3"><Card className="rounded-2xl"><CardContent className="p-4"><div className="text-sm text-slate-500">Аванс</div><div className="text-2xl font-bold">{amountVisible(state, plan.advance)}</div><div className="text-sm">{state.advanceDay} число</div></CardContent></Card><Card className="rounded-2xl"><CardContent className="p-4"><div className="text-sm text-slate-500">Зарплата</div><div className="text-2xl font-bold">{amountVisible(state, plan.salaryPart)}</div><div className="text-sm">{state.salaryDay} число</div></CardContent></Card></div>
+          <Button onClick={() => setTab("advance")} className="h-16 w-full rounded-2xl text-lg">Пришёл аванс</Button>
+          <Button onClick={() => setTab("salary")} variant="secondary" className="h-16 w-full rounded-2xl text-lg">Пришла зарплата</Button>
+          <Card className="rounded-2xl"><CardContent className="space-y-2 p-4"><div className="flex justify-between"><span>Минимум накоплений</span><b>{amountVisible(state, plan.monthlySavings)}</b></div><div className="flex justify-between"><span>Лимит карманных</span><b>{amountVisible(state, plan.pocketLimit)}</b></div><div className="flex justify-between"><span>Режим</span><b>{state.savingsMode === "buffer" ? "Собираю подушку" : "Подушка собрана"}</b></div></CardContent></Card>
+        </div>}
+
         {tab === "advance" && <Checklist state={state} plan={plan.advancePlan} title="Памятка: аванс" date={state.advanceDay} />}
         {tab === "salary" && <Checklist state={state} plan={plan.salaryPlan} title="Памятка: зарплата" date={state.salaryDay} />}
-        {tab === "settings" && <div className="space-y-4"><h2 className="text-2xl font-semibold">Настройки</h2><Card className="rounded-2xl"><CardContent className="space-y-3 p-4"><Field label="Зарплата в месяц" value={state.salary} onChange={(v)=>update({salary:v})}/><div className="grid grid-cols-2 gap-3"><Field label="Аванс" value={state.advancePercent} onChange={(v)=>update({advancePercent:v, salaryPercent: 100 - v})} suffix="%"/><Field label="Зарплата" value={state.salaryPercent} onChange={(v)=>update({salaryPercent:v, advancePercent: 100 - v})} suffix="%"/></div><div className="grid grid-cols-2 gap-3"><Field label="День аванса" value={state.advanceDay} onChange={(v)=>update({advanceDay:v})}/><Field label="День зарплаты" value={state.salaryDay} onChange={(v)=>update({salaryDay:v})}/></div><div className="grid grid-cols-2 gap-3"><Field label="Карманные" value={state.pocketPercent} onChange={(v)=>update({pocketPercent:v})} suffix="%"/><Field label="Матушке" value={state.motherPercent} onChange={(v)=>update({motherPercent:v, expenses: state.expenses.map(e => e.name === "Матушке" ? { ...e, amount: v, type: "percentSalary" } : e)})} suffix="%"/></div><Field label="Накопления" value={state.savingsPercent} onChange={(v)=>update({savingsPercent:v})} suffix="%"/><Field label="Сейчас на Карманных" value={state.pocketCurrent} onChange={(v)=>update({pocketCurrent:v})}/><select value={state.savingsMode} onChange={(e)=>update({savingsMode:e.target.value})} className="w-full rounded-xl border bg-white px-3 py-3"><option value="buffer">Собираю подушку</option><option value="distributed">Подушка собрана</option></select><Button variant="secondary" onClick={() => setLocked(true)} className="w-full rounded-2xl">Заблокировать</Button><Button variant="destructive" onClick={reset} className="w-full rounded-2xl">Стереть данные на этом устройстве</Button></CardContent></Card></div>}
-        {tab === "expenses" && <div className="space-y-4"><div className="flex items-center justify-between"><h2 className="text-2xl font-semibold">Расходы</h2><Button onClick={addExpense} size="sm" className="rounded-xl"><Plus className="mr-1 h-4 w-4"/>Добавить</Button></div>{state.expenses.map(e=><Card key={e.id} className="rounded-2xl"><CardContent className="space-y-3 p-4"><div className="flex gap-2"><input value={e.name} onChange={(ev)=>changeExpense(e.id,{name:ev.target.value})} className="flex-1 rounded-xl border px-3 py-2"/><button onClick={()=>deleteExpense(e.id)}><Trash2 className="h-5 w-5 text-slate-400"/></button></div><div className="grid grid-cols-2 gap-2"><input type="number" value={e.amount} onChange={(ev)=>changeExpense(e.id,{amount:Number(ev.target.value)})} className="rounded-xl border px-3 py-2"/><select value={e.trigger} onChange={(ev)=>changeExpense(e.id,{trigger:ev.target.value})} className="rounded-xl border px-3 py-2"><option value="advance">Аванс</option><option value="salary">Зарплата</option><option value="both">Аванс + ЗП</option></select></div><div className="grid grid-cols-2 gap-2"><select value={e.account} onChange={(ev)=>changeExpense(e.id,{account:ev.target.value})} className="rounded-xl border px-3 py-2"><option>ЕДА</option><option>ЕПС</option><option>Оплатить сразу</option><option>Подписки</option><option>Накопления</option></select><select value={e.type} onChange={(ev)=>changeExpense(e.id,{type:ev.target.value})} className="rounded-xl border px-3 py-2"><option value="fixed">Сумма</option><option value="split">Поровну</option><option value="percentSalary">% от ЗП</option></select></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={e.active} onChange={(ev)=>changeExpense(e.id,{active:ev.target.checked})}/>Активно</label></CardContent></Card>)}</div>}
-        {tab === "subs" && <div className="space-y-4"><div className="flex items-center justify-between"><h2 className="text-2xl font-semibold">Подписки</h2><Button onClick={addSub} size="sm" className="rounded-xl"><Plus className="mr-1 h-4 w-4"/>Добавить</Button></div>{state.subscriptions.map(x=><Card key={x.id} className="rounded-2xl"><CardContent className="space-y-3 p-4"><div className="flex gap-2"><input value={x.name} onChange={(ev)=>changeSub(x.id,{name:ev.target.value})} className="flex-1 rounded-xl border px-3 py-2"/><button onClick={()=>deleteSub(x.id)}><Trash2 className="h-5 w-5 text-slate-400"/></button></div><div className="grid grid-cols-2 gap-2"><input type="number" value={x.price} onChange={(ev)=>changeSub(x.id,{price:Number(ev.target.value)})} className="rounded-xl border px-3 py-2"/><input type="number" value={x.periodMonths} onChange={(ev)=>changeSub(x.id,{periodMonths:Number(ev.target.value)})} className="rounded-xl border px-3 py-2"/></div><div className="flex justify-between rounded-xl bg-slate-100 p-3"><span>В месяц</span><b>{amountVisible(state, Number(x.price||0)/Math.max(1,Number(x.periodMonths||1)))}</b></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={x.active} onChange={(ev)=>changeSub(x.id,{active:ev.target.checked})}/>Активна</label></CardContent></Card>)}</div>}
+
+        {tab === "settings" && <div className="space-y-4"><h2 className="text-2xl font-semibold">Настройки</h2><Card className="rounded-2xl"><CardContent className="space-y-3 p-4">
+          <Field label="Зарплата в месяц" value={state.salary} onChange={(v)=>update({salary:v})}/>
+          <div className="grid grid-cols-2 gap-3"><Field label="Аванс" value={state.advancePercent} onChange={(v)=>update({advancePercent:v, salaryPercent: 100 - v})} suffix="%"/><Field label="Зарплата" value={state.salaryPercent} onChange={(v)=>update({salaryPercent:v, advancePercent: 100 - v})} suffix="%"/></div>
+          <div className="grid grid-cols-2 gap-3"><Field label="День аванса" value={state.advanceDay} onChange={(v)=>update({advanceDay:v})}/><Field label="День зарплаты" value={state.salaryDay} onChange={(v)=>update({salaryDay:v})}/></div>
+          <div className="grid grid-cols-2 gap-3"><Field label="Карманные" value={state.pocketPercent} onChange={(v)=>update({pocketPercent:v})} suffix="%"/><Field label="Матушке" value={state.motherPercent} onChange={(v)=>update({motherPercent:v, expenses: state.expenses.map(e => e.name === "Матушке" ? { ...e, amount: v, type: "percentSalary" } : e)})} suffix="%"/></div>
+          <Field label="Накопления" value={state.savingsPercent} onChange={(v)=>update({savingsPercent:v})} suffix="%"/>
+          <Field label="Сейчас на Карманных" value={state.pocketCurrent} onChange={(v)=>update({pocketCurrent:v})}/>
+          <select value={state.savingsMode} onChange={(e)=>update({savingsMode:e.target.value})} className="w-full rounded-xl border bg-white px-3 py-3"><option value="buffer">Собираю подушку</option><option value="distributed">Подушка собрана</option></select>
+          <Button variant="secondary" onClick={() => setLocked(true)} className="w-full rounded-2xl">Заблокировать</Button>
+          <Button variant="destructive" onClick={reset} className="w-full rounded-2xl">Стереть данные на этом устройстве</Button>
+        </CardContent></Card></div>}
+
+        {tab === "expenses" && <div className="space-y-4"><div className="flex items-center justify-between"><h2 className="text-2xl font-semibold">Расходы</h2><Button onClick={addExpense} size="sm" className="rounded-xl"><Plus className="mr-1 h-4 w-4"/>Добавить</Button></div>{state.expenses.map(e=><Card key={e.id} className="rounded-2xl"><CardContent className="space-y-3 p-4"><div className="flex gap-2"><input value={e.name} onChange={(ev)=>changeExpense(e.id,{name:ev.target.value})} className="flex-1 rounded-xl border px-3 py-2"/><button onClick={()=>deleteExpense(e.id)}><Trash2 className="h-5 w-5 text-slate-400"/></button></div><div className="grid grid-cols-2 gap-2"><input type="number" value={inputNumberValue(e.amount)} onChange={(ev)=>changeExpense(e.id,{amount:parseNumberInput(ev.target.value)})} className="rounded-xl border px-3 py-2"/><select value={e.trigger} onChange={(ev)=>changeExpense(e.id,{trigger:ev.target.value})} className="rounded-xl border px-3 py-2"><option value="advance">Аванс</option><option value="salary">Зарплата</option><option value="both">Аванс + ЗП</option></select></div><div className="grid grid-cols-2 gap-2"><select value={e.account} onChange={(ev)=>changeExpense(e.id,{account:ev.target.value})} className="rounded-xl border px-3 py-2"><option>ЕДА</option><option>ЕПС</option><option>Оплатить сразу</option><option>Подписки</option><option>Накопления</option></select><select value={e.type} onChange={(ev)=>changeExpense(e.id,{type:ev.target.value})} className="rounded-xl border px-3 py-2"><option value="fixed">Сумма</option><option value="split">Поровну</option><option value="percentSalary">% от ЗП</option></select></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={e.active} onChange={(ev)=>changeExpense(e.id,{active:ev.target.checked})}/>Активно</label></CardContent></Card>)}</div>}
+
+        {tab === "subs" && <div className="space-y-4"><div className="flex items-center justify-between"><h2 className="text-2xl font-semibold">Подписки</h2><Button onClick={addSub} size="sm" className="rounded-xl"><Plus className="mr-1 h-4 w-4"/>Добавить</Button></div>{state.subscriptions.map(x=><Card key={x.id} className="rounded-2xl"><CardContent className="space-y-3 p-4"><div className="flex gap-2"><input value={x.name} onChange={(ev)=>changeSub(x.id,{name:ev.target.value})} className="flex-1 rounded-xl border px-3 py-2"/><button onClick={()=>deleteSub(x.id)}><Trash2 className="h-5 w-5 text-slate-400"/></button></div><div className="grid grid-cols-2 gap-2"><input type="number" value={inputNumberValue(x.price)} onChange={(ev)=>changeSub(x.id,{price:parseNumberInput(ev.target.value)})} className="rounded-xl border px-3 py-2"/><input type="number" value={inputNumberValue(x.periodMonths)} onChange={(ev)=>changeSub(x.id,{periodMonths:parseNumberInput(ev.target.value)})} className="rounded-xl border px-3 py-2"/></div><div className="flex justify-between rounded-xl bg-slate-100 p-3"><span>В месяц</span><b>{amountVisible(state, Number(x.price||0)/Math.max(1,Number(x.periodMonths||1)))}</b></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={x.active} onChange={(ev)=>changeSub(x.id,{active:ev.target.checked})}/>Активна</label></CardContent></Card>)}</div>}
       </motion.div></div>
       <div className="fixed inset-x-0 bottom-0 border-t bg-white/95 p-2 backdrop-blur"><div className="mx-auto grid max-w-md grid-cols-6 gap-1"><NavButton id="home" icon={WalletCards} label="Главная"/><NavButton id="advance" icon={CalendarDays} label="Аванс"/><NavButton id="salary" icon={ArrowLeftRight} label="ЗП"/><NavButton id="expenses" icon={CreditCard} label="Траты"/><NavButton id="subs" icon={Repeat} label="Подп."/><NavButton id="settings" icon={Settings} label="Настр."/></div></div>
     </div>
   );
 }
 
+export default App;
