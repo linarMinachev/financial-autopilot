@@ -2,14 +2,14 @@
   "name": "Финансовый автопилот",
   "short_name": "Автопилот",
   "description": "Памятка распределения аванса и зарплаты",
-  "start_url": "/financial-autopilot/",
-  "scope": "/financial-autopilot/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f1f5f9",
   "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "/financial-autopilot/icon.svg",
+      "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
