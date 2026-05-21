@@ -225,6 +225,7 @@ const emptyState = {
   savingsPercent: 35,
   savingsMode: "buffer", // buffer | distributed
   bufferGoal: 300000,
+  bufferFact: 0,
   longTermYearGoal: 144000,
   longTermPaidThisYear: 0,
   hideAmounts: false,
