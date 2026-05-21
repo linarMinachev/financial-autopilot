@@ -517,14 +517,17 @@ const NavButton = ({ id, icon: Icon, label }) => {
   return (
     <button
       onClick={() => setTab(id)}
-      className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-medium transition ${
+      className={`flex h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-1 transition ${
         active
-          ? "bg-slate-950 text-white shadow-sm"
-          : "text-slate-500 active:bg-slate-100"
+          ? "bg-slate-950 text-white shadow-md"
+          : "text-slate-700 active:bg-slate-100"
       }`}
     >
-      <Icon className="h-6 w-6 shrink-0" />
-      <span className="max-w-full truncate">{label}</span>
+      <Icon className="h-7 w-7 shrink-0" />
+
+      <span className="w-full text-center text-[10px] font-semibold leading-tight tracking-tight">
+        {label}
+      </span>
     </button>
   );
 };
@@ -594,8 +597,8 @@ const NavButton = ({ id, icon: Icon, label }) => {
         </div>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 border-t bg-white/95 px-2 pb-3 pt-2 backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-6 gap-1 rounded-3xl bg-white p-1 shadow-sm">
+       <div className="fixed inset-x-0 bottom-0 bg-white/95 px-3 pb-4 pt-2 backdrop-blur">
+        <div className="mx-auto grid max-w-md grid-cols-6 gap-1.5 rounded-[28px] bg-white p-2 shadow-lg ring-1 ring-slate-200/70">
           <NavButton id="home" icon={HomeIcon} label="Главная" />
           <NavButton id="advance" icon={AdvanceIcon} label="Аванс" />
           <NavButton id="salary" icon={SalaryIcon} label="ЗП" />
