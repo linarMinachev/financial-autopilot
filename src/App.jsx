@@ -6,10 +6,10 @@ const STORAGE_KEY = "financial-autopilot-v2";
 function IconBase({ children, className = "" }) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 32 32"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2.2"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -22,43 +22,48 @@ function IconBase({ children, className = "" }) {
 function HomeIcon({ className = "" }) {
   return (
     <IconBase className={className}>
-      <path d="M4.5 10.5L12 4l7.5 6.5" />
-      <path d="M6.5 9.5V19a1 1 0 0 0 1 1h3.2v-4.6a1 1 0 0 1 1-1h.6a1 1 0 0 1 1 1V20h3.2a1 1 0 0 0 1-1V9.5" />
+      <path d="M5.5 15.2L16 6.2l10.5 9" />
+      <path d="M8.5 13.5V25a1.4 1.4 0 0 0 1.4 1.4h4.2v-6.1a1.4 1.4 0 0 1 1.4-1.4h1a1.4 1.4 0 0 1 1.4 1.4v6.1h4.2a1.4 1.4 0 0 0 1.4-1.4V13.5" />
     </IconBase>
   );
 }
 
 function AdvanceIcon({ className = "" }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={className}>
+    <svg
+      viewBox="0 0 32 32"
+      fill="none"
+      className={className}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path
-        d="M12 4C8 4 5 7.6 5 12s3 8 7 8"
+        d="M16 5.2C10.2 5.2 6 10 6 16s4.2 10.8 10 10.8"
         stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeWidth="2.2"
       />
+
       <path
-        d="M12 4c-1 1.2.8 2.5 0 3.8-.8 1.2.8 2.4 0 3.6-.8 1.2.8 2.4 0 3.6-.8 1.2.8 2.5 0 4"
+        d="M16 5.2c-1.5 1.6 1.1 3.2 0 4.8-1.1 1.6 1.1 3.2 0 4.8-1.1 1.6 1.1 3.2 0 4.8-1.1 1.6 1.1 3.2 0 7.2"
         stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeWidth="2.2"
       />
+
       <path
-        d="M12 4c4 0 7 3.6 7 8s-3 8-7 8"
+        d="M17 5.2c5.2.5 9 5 9 10.8s-3.8 10.3-9 10.8"
         stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeDasharray="3 3"
+        strokeWidth="2.2"
+        strokeDasharray="3.2 3.2"
       />
+
       <text
-        x="8.1"
-        y="14.4"
-        fontSize="6.4"
-        fontWeight="500"
+        x="10.1"
+        y="19.3"
+        fontSize="9"
+        fontWeight="600"
         fill="currentColor"
         stroke="none"
+        fontFamily="Arial, sans-serif"
       >
         ₽
       </text>
@@ -68,35 +73,40 @@ function AdvanceIcon({ className = "" }) {
 
 function SalaryIcon({ className = "" }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={className}>
+    <svg
+      viewBox="0 0 32 32"
+      fill="none"
+      className={className}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path
-        d="M12 4c-4 0-7 3.6-7 8s3 8 7 8"
+        d="M15 5.2c-5.2.5-9 5-9 10.8s3.8 10.3 9 10.8"
         stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeDasharray="3 3"
+        strokeWidth="2.2"
+        strokeDasharray="3.2 3.2"
       />
+
       <path
-        d="M12 4c1 1.2-.8 2.5 0 3.8.8 1.2-.8 2.4 0 3.6.8 1.2-.8 2.4 0 3.6.8 1.2-.8 2.5 0 4"
+        d="M16 5.2c1.5 1.6-1.1 3.2 0 4.8 1.1 1.6-1.1 3.2 0 4.8 1.1 1.6-1.1 3.2 0 4.8 1.1 1.6-1.1 3.2 0 7.2"
         stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeWidth="2.2"
       />
+
       <path
-        d="M12 4c4 0 7 3.6 7 8s-3 8-7 8"
+        d="M16 5.2c5.8 0 10 4.8 10 10.8s-4.2 10.8-10 10.8"
         stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeWidth="2.2"
       />
+
       <text
-        x="12.7"
-        y="14.4"
-        fontSize="6.4"
-        fontWeight="500"
+        x="17.3"
+        y="19.3"
+        fontSize="9"
+        fontWeight="600"
         fill="currentColor"
         stroke="none"
+        fontFamily="Arial, sans-serif"
       >
         ₽
       </text>
@@ -107,9 +117,9 @@ function SalaryIcon({ className = "" }) {
 function ExpensesIcon({ className = "" }) {
   return (
     <IconBase className={className}>
-      <path d="M7 4.5h10a1 1 0 0 1 1 1V20l-2-1.6L14 20l-2-1.6L10 20l-2-1.6L6 20V5.5a1 1 0 0 1 1-1Z" />
-      <path d="M9 9h6" />
-      <path d="M9 13h6" />
+      <path d="M10 5.5h12a1.6 1.6 0 0 1 1.6 1.6v19.4l-2.6-2-2.5 2-2.5-2-2.5 2-2.5-2-2.6 2V7.1A1.6 1.6 0 0 1 10 5.5Z" />
+      <path d="M13 12h6" />
+      <path d="M13 17h6" />
     </IconBase>
   );
 }
@@ -117,24 +127,34 @@ function ExpensesIcon({ className = "" }) {
 function SubscriptionsIcon({ className = "" }) {
   return (
     <IconBase className={className}>
-      <rect x="4.5" y="5.5" width="15" height="14" rx="2" />
-      <path d="M8 3.8v3.4" />
-      <path d="M16 3.8v3.4" />
-      <path d="M4.5 9.2h15" />
-      <path d="M9.5 14a3 3 0 0 1 5-.8" />
-      <path d="M14.5 14.2v-1.8h1.8" />
-      <path d="M14.5 15a3 3 0 0 1-5 .8" />
-      <path d="M9.5 15.8v1.8H7.7" />
+      <rect x="6.2" y="7.2" width="19.6" height="18.6" rx="2.6" />
+      <path d="M10.5 4.8v5" />
+      <path d="M21.5 4.8v5" />
+      <path d="M6.2 12.4h19.6" />
+
+      <path d="M12.4 18.2a4.2 4.2 0 0 1 7-1.4" />
+      <path d="M19.4 16.8v-2.4h2.4" />
+
+      <path d="M19.6 19.8a4.2 4.2 0 0 1-7 1.4" />
+      <path d="M12.6 21.2v2.4h-2.4" />
     </IconBase>
   );
 }
 
 function SettingsIcon({ className = "" }) {
   return (
-    <IconBase className={className}>
-      <path d="M12 4.2l1 .5 1.2-.2.7 1 .9.6-.1 1.2.6 1 .9.7-.4 1.1.2 1.2-.9.7-.6 1 .1 1.2-.9.6-.7 1-1.2-.2-1 .5-1-.5-1.2.2-.7-1-.9-.6.1-1.2-.6-1-.9-.7.2-1.2-.4-1.1.9-.7.6-1-.1-1.2.9-.6.7-1 1.2.2 1-.5Z" />
-      <circle cx="12" cy="12" r="3.2" />
-    </IconBase>
+    <svg
+      viewBox="0 0 32 32"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17.7 4.8l.8 3a8.8 8.8 0 0 1 2.1.9l2.8-1.5 1.8 1.8-1.5 2.8c.4.7.7 1.4.9 2.1l3 .8v2.6l-3 .8a8.8 8.8 0 0 1-.9 2.1l1.5 2.8-1.8 1.8-2.8-1.5a8.8 8.8 0 0 1-2.1.9l-.8 3h-3.4l-.8-3a8.8 8.8 0 0 1-2.1-.9l-2.8 1.5-1.8-1.8 1.5-2.8a8.8 8.8 0 0 1-.9-2.1l-3-.8v-2.6l3-.8c.2-.7.5-1.4.9-2.1L6.8 9l1.8-1.8 2.8 1.5c.7-.4 1.4-.7 2.1-.9l.8-3h3.4Z" />
+      <circle cx="16" cy="16" r="4.1" />
+    </svg>
   );
 }
 
@@ -523,7 +543,7 @@ const NavButton = ({ id, icon: Icon, label }) => {
           : "text-slate-700 active:bg-slate-100"
       }`}
     >
-      <Icon className="h-7 w-7 shrink-0" />
+      <Icon className="h-8 w-8 shrink-0" />
 
       <span className="w-full text-center text-[10px] font-semibold leading-tight tracking-tight">
         {label}
@@ -604,7 +624,7 @@ const NavButton = ({ id, icon: Icon, label }) => {
           <NavButton id="salary" icon={SalaryIcon} label="ЗП" />
           <NavButton id="expenses" icon={ExpensesIcon} label="Траты" />
           <NavButton id="subs" icon={SubscriptionsIcon} label="Подписки" />
-          <NavButton id="settings" icon={SettingsIcon} label="Настройки" />
+          <NavButton id="settings" icon={SettingsIcon} label="Правка" />
         </div>
       </div>
     </div>
