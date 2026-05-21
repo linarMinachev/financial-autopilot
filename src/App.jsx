@@ -367,13 +367,23 @@ return {
 };
   };
 
+  const advancePlan = build("advance", advance);
+  const salaryPlan = build("salary", salaryPart);
+
+  const totalFree = advancePlan.rest + salaryPlan.rest;
+  const totalDeficit = advancePlan.deficit + salaryPlan.deficit;
+  const netFree = totalFree - totalDeficit;
+
   return {
     advance,
     salaryPart,
     pocketLimit,
     monthlySavings,
-    advancePlan: build("advance", advance),
-    salaryPlan: build("salary", salaryPart),
+    advancePlan,
+    salaryPlan,
+    totalFree,
+    totalDeficit,
+    netFree,
   };
 }
 
@@ -409,6 +419,33 @@ function NumericInput({ value, onChange, className = "", placeholder = "0" }) {
       onChange={(e) => onChange(parseDigits(e.target.value))}
       className={className + " placeholder:text-slate-300"}
     />
+  );
+}
+
+function BufferProgress({ state }) {
+  const goal = Number(state.bufferGoal || 0);
+  const fact = Number(state.bufferFact || 0);
+  const percent = goal > 0 ? Math.min(100, Math.max(0, (fact / goal) * 100)) : 0;
+  const missing = Math.max(0, goal - fact);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="text-slate-500">Подушка</span>
+        <b>{amountVisible(state, fact)} / {amountVisible(state, goal)}</b>
+      </div>
+
+      <div className="h-3 overflow-hidden rounded-full border-2 border-slate-950 bg-white">
+        <div
+          className="h-full rounded-full bg-slate-950 transition-all"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+
+      <div className="text-xs text-slate-400">
+        {missing > 0 ? `Не хватает: ${amountVisible(state, missing)}` : "План выполнен"}
+      </div>
+    </div>
   );
 }
 
@@ -691,7 +728,7 @@ const NavButton = ({ id, icon: Icon, label }) => {
     </Button>
 
     <Card className="rounded-2xl">
-      <CardContent className="space-y-2 p-4">
+      <CardContent className="space-y-3 p-4">
         <div className="flex justify-between">
           <span>Минимум накоплений</span>
           <b>{amountVisible(state, plan.monthlySavings)}</b>
@@ -703,12 +740,25 @@ const NavButton = ({ id, icon: Icon, label }) => {
         </div>
 
         <div className="flex justify-between">
+          <span>Свободно</span>
+          <b className={plan.netFree >= 0 ? "text-emerald-700" : "text-red-600"}>
+            {plan.netFree >= 0
+              ? amountVisible(state, plan.netFree)
+              : `-${amountVisible(state, Math.abs(plan.netFree))}`}
+          </b>
+        </div>
+
+        <div className="flex justify-between">
           <span>Режим</span>
           <b>
             {state.savingsMode === "buffer"
               ? "Собираю подушку"
               : "Подушка собрана"}
           </b>
+        </div>
+
+        <div className="pt-2">
+          <BufferProgress state={state} />
         </div>
       </CardContent>
     </Card>
@@ -724,6 +774,10 @@ const NavButton = ({ id, icon: Icon, label }) => {
           <div className="grid grid-cols-2 gap-3"><Field label="День аванса" value={state.advanceDay} onChange={(v)=>update({advanceDay:v})}/><Field label="День зарплаты" value={state.salaryDay} onChange={(v)=>update({salaryDay:v})}/></div>
           <div className="grid grid-cols-2 gap-3"><Field label="Карманные" value={state.pocketPercent} onChange={(v)=>update({pocketPercent:v})} suffix="%"/><Field label="Матушке" value={state.motherPercent} onChange={(v)=>update({motherPercent:v, expenses: state.expenses.map(e => e.name === "Матушке" ? { ...e, amount: v, type: "percentSalary" } : e)})} suffix="%"/></div>
           <Field label="Накопления" value={state.savingsPercent} onChange={(v)=>update({savingsPercent:v})} suffix="%"/>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="План подушки" value={state.bufferGoal} onChange={(v)=>update({bufferGoal:v})}/>
+            <Field label="Факт подушки" value={state.bufferFact} onChange={(v)=>update({bufferFact:v})}/>
+          </div>
           <Field label="Сейчас на Карманных" value={state.pocketCurrent} onChange={(v)=>update({pocketCurrent:v})}/>
           <select value={state.savingsMode} onChange={(e)=>update({savingsMode:e.target.value})} className="w-full rounded-xl border bg-white px-3 py-3"><option value="buffer">Собираю подушку</option><option value="distributed">Подушка собрана</option></select>
           <Button variant="secondary" onClick={() => setLocked(true)} className="w-full rounded-2xl">Заблокировать</Button>
