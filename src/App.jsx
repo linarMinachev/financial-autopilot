@@ -110,8 +110,7 @@ function calcPlan(s) {
       items.push({
         title: g.account === "Оплатить сразу" ? "Оплатить сразу" : `Перевести в ${g.account}`,
         amount: g.amount,
-        note: g.details.map((d) => `${d.name} — ${money(d.amount)}`).join("
-"),
+        note: g.details.map((d) => `${d.name} — ${money(d.amount)}`).join("\\n"),
       });
       used += g.amount;
     });
@@ -197,8 +196,7 @@ function NumericInput({ value, onChange, className = "", placeholder = "0" }) {
 function NoteText({ text }) {
   return (
     <div className="space-y-0.5 text-sm text-slate-500">
-      {String(text || "").split("
-").map((line, i) => (
+      {String(text || "").split("\\n").map((line, i) => (
         <div key={i}>{line}</div>
       ))}
     </div>
