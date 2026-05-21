@@ -1,10 +1,55 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Settings, WalletCards, CalendarDays, Plus, Trash2, CheckCircle2, CreditCard, ArrowLeftRight, Lock, Eye, EyeOff, Repeat } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 const STORAGE_KEY = "financial-autopilot-v2";
+
+function Button({
+  children,
+  onClick,
+  className = "",
+  variant = "default",
+  size = "default",
+  disabled = false,
+  type = "button",
+}) {
+  const base =
+    "inline-flex items-center justify-center font-medium transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
+
+  const variants = {
+    default: "bg-slate-950 text-white hover:bg-slate-800",
+    secondary: "bg-white text-slate-950 border border-slate-200 hover:bg-slate-50",
+    destructive: "bg-red-600 text-white hover:bg-red-700",
+  };
+
+  const sizes = {
+    default: "px-4 py-2",
+    sm: "px-3 py-2 text-sm",
+  };
+
+  return (
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={`${base} ${variants[variant] || variants.default} ${sizes[size] || sizes.default} ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Card({ children, className = "" }) {
+  return (
+    <div className={`border border-slate-200 bg-white shadow-sm ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function CardContent({ children, className = "" }) {
+  return <div className={className}>{children}</div>;
+}
 
 const money = (n) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Math.round(Number(n || 0))) + " ₽";
