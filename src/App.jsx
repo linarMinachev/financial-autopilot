@@ -561,25 +561,41 @@ const NavButton = ({ id, icon: Icon, label }) => {
       </motion.div></div>
 
       {confirmReset && (
-        <div className="fixed inset-x-0 bottom-0 border-t bg-white/95 px-2 pb-3 pt-2 backdrop-blur">
-  <div className="mx-auto grid max-w-md grid-cols-6 gap-1 rounded-3xl bg-white p-1 shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <Card className="w-full max-w-sm rounded-3xl">
             <CardContent className="space-y-4 p-5">
               <div>
                 <h3 className="text-xl font-semibold">Стереть данные?</h3>
-                <p className="mt-1 text-sm text-slate-500">Будут удалены все настройки, расходы, подписки и PIN на этом устройстве. Отменить действие нельзя.</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Будут удалены все настройки, расходы, подписки и PIN на этом устройстве.
+                  Отменить действие нельзя.
+                </p>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <Button variant="secondary" className="rounded-2xl" onClick={() => setConfirmReset(false)}>Нет</Button>
-                <Button variant="destructive" className="rounded-2xl" onClick={reset}>Да, стереть</Button>
+                <Button
+                  variant="secondary"
+                  className="rounded-2xl"
+                  onClick={() => setConfirmReset(false)}
+                >
+                  Нет
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  className="rounded-2xl"
+                  onClick={reset}
+                >
+                  Да, стереть
+                </Button>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 border-t bg-white/95 p-2 backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-6 gap-1">
+      <div className="fixed inset-x-0 bottom-0 border-t bg-white/95 px-2 pb-3 pt-2 backdrop-blur">
+        <div className="mx-auto grid max-w-md grid-cols-6 gap-1 rounded-3xl bg-white p-1 shadow-sm">
           <NavButton id="home" icon={HomeIcon} label="Главная" />
           <NavButton id="advance" icon={AdvanceIcon} label="Аванс" />
           <NavButton id="salary" icon={SalaryIcon} label="ЗП" />
