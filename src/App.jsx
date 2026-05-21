@@ -339,12 +339,31 @@ function calcPlan(s) {
       }
     }
 
-    const rest = Math.max(0, income - used);
-    if (rest > 0) {
-      const target = s.savingsMode === "distributed" && trigger === "salary" ? "Инвест-накопления" : "Накопления";
-      items.push({ title: `Остаток в ${target}`, amount: rest, note: "Чтобы на Основной осталось 0 ₽" });
-    }
-    return { income, used, rest, items };
+const distributed = used;
+const rest = Math.max(0, income - distributed);
+const deficit = Math.max(0, distributed - income);
+
+if (rest > 0) {
+  const target =
+    s.savingsMode === "distributed" && trigger === "salary"
+      ? "Инвест-накопления"
+      : "Накопления";
+
+  items.push({
+    title: `Остаток в ${target}`,
+    amount: rest,
+    note: "Свободный остаток после всех переводов",
+  });
+}
+
+return {
+  income,
+  distributed,
+  rest,
+  deficit,
+  totalWithRest: distributed + rest,
+  items,
+};
   };
 
   return {
@@ -488,11 +507,47 @@ function Setup({ update }) {
   );
 }
 
+function TriggerSummary({ state, plan }) {
+  const isDeficit = plan.deficit > 0;
+
+  return (
+    <Card className={`rounded-2xl ${isDeficit ? "border-red-200 bg-red-50" : "bg-white"}`}>
+      <CardContent className="space-y-2 p-4">
+        <div className="flex justify-between text-sm">
+          <span className="text-slate-500">Поступило</span>
+          <b>{amountVisible(state, plan.income)}</b>
+        </div>
+
+        <div className="flex justify-between text-sm">
+          <span className="text-slate-500">Распределено</span>
+          <b>{amountVisible(state, plan.distributed)}</b>
+        </div>
+
+        <div className="flex justify-between text-sm">
+          <span className={isDeficit ? "text-red-600" : "text-slate-500"}>
+            {isDeficit ? "Не хватает" : "Свободно"}
+          </span>
+          <b className={isDeficit ? "text-red-600" : "text-emerald-700"}>
+            {amountVisible(state, isDeficit ? plan.deficit : plan.rest)}
+          </b>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Checklist({ state, plan, title, date }) {
   const [done, setDone] = useState({});
-  return (
-    <div className="space-y-4">
-      <div><h2 className="text-2xl font-semibold">{title}</h2><p className="text-slate-500">Средняя дата: {date} число. Поступило: {amountVisible(state, plan.income)}</p></div>
+return (
+  <div className="space-y-4">
+    <div>
+      <h2 className="text-2xl font-semibold">{title}</h2>
+      <p className="text-slate-500">
+        Средняя дата: {date} число. Поступило: {amountVisible(state, plan.income)}
+      </p>
+    </div>
+
+    <TriggerSummary state={state} plan={plan} />
       <div className="space-y-3">
         {plan.items.map((it, idx) => (
           <Card key={idx} className="rounded-2xl"><CardContent className="flex gap-3 p-4">
@@ -555,13 +610,109 @@ const NavButton = ({ id, icon: Icon, label }) => {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950">
       <div className="mx-auto max-w-md px-4 pb-28 pt-5"><motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} className="space-y-4">
-        {tab === "home" && <div className="space-y-4">
-          <div className="flex items-start justify-between gap-3"><div><h1 className="text-3xl font-bold">Финансовый автопилот</h1><p className="text-slate-500">Настроил правила → пришли деньги → сделал переводы.</p></div><button onClick={() => update({ hideAmounts: !state.hideAmounts })} className="rounded-2xl bg-white p-3">{state.hideAmounts ? <Eye/> : <EyeOff/>}</button></div>
-          <div className="grid grid-cols-2 gap-3"><Card className="rounded-2xl"><CardContent className="p-4"><div className="text-sm text-slate-500">Аванс</div><div className="text-2xl font-bold">{amountVisible(state, plan.advance)}</div><div className="text-sm">{state.advanceDay} число</div></CardContent></Card><Card className="rounded-2xl"><CardContent className="p-4"><div className="text-sm text-slate-500">Зарплата</div><div className="text-2xl font-bold">{amountVisible(state, plan.salaryPart)}</div><div className="text-sm">{state.salaryDay} число</div></CardContent></Card></div>
-          <Button onClick={() => setTab("advance")} className="h-16 w-full rounded-2xl text-lg">Пришёл аванс</Button>
-          <Button onClick={() => setTab("salary")} variant="secondary" className="h-16 w-full rounded-2xl text-lg">Пришла зарплата</Button>
-          <Card className="rounded-2xl"><CardContent className="space-y-2 p-4"><div className="flex justify-between"><span>Минимум накоплений</span><b>{amountVisible(state, plan.monthlySavings)}</b></div><div className="flex justify-between"><span>Лимит карманных</span><b>{amountVisible(state, plan.pocketLimit)}</b></div><div className="flex justify-between"><span>Режим</span><b>{state.savingsMode === "buffer" ? "Собираю подушку" : "Подушка собрана"}</b></div></CardContent></Card>
-        </div>}
+{tab === "home" && (
+  <div className="space-y-4">
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <h1 className="text-3xl font-bold">Финансовый автопилот</h1>
+        <p className="text-slate-500">
+          Настроил правила → пришли деньги → сделал переводы.
+        </p>
+      </div>
+
+      <button
+        onClick={() => update({ hideAmounts: !state.hideAmounts })}
+        className="rounded-2xl bg-white p-3"
+      >
+        {state.hideAmounts ? <Eye /> : <EyeOff />}
+      </button>
+    </div>
+
+    <div className="grid grid-cols-2 gap-3">
+      <Card className="rounded-2xl">
+        <CardContent className="space-y-1 p-4">
+          <div className="text-sm text-slate-500">Аванс</div>
+          <div className="text-2xl font-bold">
+            {amountVisible(state, plan.advance)}
+          </div>
+          <div className="text-sm">{state.advanceDay} число</div>
+
+          <div
+            className={`pt-2 text-xs font-semibold ${
+              plan.advancePlan.deficit > 0
+                ? "text-red-600"
+                : "text-emerald-700"
+            }`}
+          >
+            {plan.advancePlan.deficit > 0
+              ? `Не хватает: ${amountVisible(state, plan.advancePlan.deficit)}`
+              : `Свободно: ${amountVisible(state, plan.advancePlan.rest)}`}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardContent className="space-y-1 p-4">
+          <div className="text-sm text-slate-500">Зарплата</div>
+          <div className="text-2xl font-bold">
+            {amountVisible(state, plan.salaryPart)}
+          </div>
+          <div className="text-sm">{state.salaryDay} число</div>
+
+          <div
+            className={`pt-2 text-xs font-semibold ${
+              plan.salaryPlan.deficit > 0
+                ? "text-red-600"
+                : "text-emerald-700"
+            }`}
+          >
+            {plan.salaryPlan.deficit > 0
+              ? `Не хватает: ${amountVisible(state, plan.salaryPlan.deficit)}`
+              : `Свободно: ${amountVisible(state, plan.salaryPlan.rest)}`}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    <Button
+      onClick={() => setTab("advance")}
+      className="h-16 w-full rounded-2xl text-lg"
+    >
+      Пришёл аванс
+    </Button>
+
+    <Button
+      onClick={() => setTab("salary")}
+      variant="secondary"
+      className="h-16 w-full rounded-2xl text-lg"
+    >
+      Пришла зарплата
+    </Button>
+
+    <Card className="rounded-2xl">
+      <CardContent className="space-y-2 p-4">
+        <div className="flex justify-between">
+          <span>Минимум накоплений</span>
+          <b>{amountVisible(state, plan.monthlySavings)}</b>
+        </div>
+
+        <div className="flex justify-between">
+          <span>Лимит карманных</span>
+          <b>{amountVisible(state, plan.pocketLimit)}</b>
+        </div>
+
+        <div className="flex justify-between">
+          <span>Режим</span>
+          <b>
+            {state.savingsMode === "buffer"
+              ? "Собираю подушку"
+              : "Подушка собрана"}
+          </b>
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+)}
 
         {tab === "advance" && <Checklist state={state} plan={plan.advancePlan} title="Памятка: аванс" date={state.advanceDay} />}
         {tab === "salary" && <Checklist state={state} plan={plan.salaryPlan} title="Памятка: зарплата" date={state.salaryDay} />}
