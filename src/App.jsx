@@ -1,8 +1,142 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Settings, WalletCards, CalendarDays, Plus, Trash2, CheckCircle2, CreditCard, ArrowLeftRight, Lock, Eye, EyeOff, Repeat } from "lucide-react";
-
+import { Plus, Trash2, CheckCircle2, Lock, Eye, EyeOff } from "lucide-react";
 const STORAGE_KEY = "financial-autopilot-v2";
+
+function IconBase({ children, className = "" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {children}
+    </svg>
+  );
+}
+
+function HomeIcon({ className = "" }) {
+  return (
+    <IconBase className={className}>
+      <path d="M4.5 10.5L12 4l7.5 6.5" />
+      <path d="M6.5 9.5V19a1 1 0 0 0 1 1h3.2v-4.6a1 1 0 0 1 1-1h.6a1 1 0 0 1 1 1V20h3.2a1 1 0 0 0 1-1V9.5" />
+    </IconBase>
+  );
+}
+
+function AdvanceIcon({ className = "" }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M12 4C8 4 5 7.6 5 12s3 8 7 8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 4c-1 1.2.8 2.5 0 3.8-.8 1.2.8 2.4 0 3.6-.8 1.2.8 2.4 0 3.6-.8 1.2.8 2.5 0 4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 4c4 0 7 3.6 7 8s-3 8-7 8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeDasharray="3 3"
+      />
+      <text
+        x="8.1"
+        y="14.4"
+        fontSize="6.4"
+        fontWeight="500"
+        fill="currentColor"
+        stroke="none"
+      >
+        ₽
+      </text>
+    </svg>
+  );
+}
+
+function SalaryIcon({ className = "" }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M12 4c-4 0-7 3.6-7 8s3 8 7 8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeDasharray="3 3"
+      />
+      <path
+        d="M12 4c1 1.2-.8 2.5 0 3.8.8 1.2-.8 2.4 0 3.6.8 1.2-.8 2.4 0 3.6.8 1.2-.8 2.5 0 4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 4c4 0 7 3.6 7 8s-3 8-7 8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <text
+        x="12.7"
+        y="14.4"
+        fontSize="6.4"
+        fontWeight="500"
+        fill="currentColor"
+        stroke="none"
+      >
+        ₽
+      </text>
+    </svg>
+  );
+}
+
+function ExpensesIcon({ className = "" }) {
+  return (
+    <IconBase className={className}>
+      <path d="M7 4.5h10a1 1 0 0 1 1 1V20l-2-1.6L14 20l-2-1.6L10 20l-2-1.6L6 20V5.5a1 1 0 0 1 1-1Z" />
+      <path d="M9 9h6" />
+      <path d="M9 13h6" />
+    </IconBase>
+  );
+}
+
+function SubscriptionsIcon({ className = "" }) {
+  return (
+    <IconBase className={className}>
+      <rect x="4.5" y="5.5" width="15" height="14" rx="2" />
+      <path d="M8 3.8v3.4" />
+      <path d="M16 3.8v3.4" />
+      <path d="M4.5 9.2h15" />
+      <path d="M9.5 14a3 3 0 0 1 5-.8" />
+      <path d="M14.5 14.2v-1.8h1.8" />
+      <path d="M14.5 15a3 3 0 0 1-5 .8" />
+      <path d="M9.5 15.8v1.8H7.7" />
+    </IconBase>
+  );
+}
+
+function SettingsIcon({ className = "" }) {
+  return (
+    <IconBase className={className}>
+      <path d="M12 4.2l1 .5 1.2-.2.7 1 .9.6-.1 1.2.6 1 .9.7-.4 1.1.2 1.2-.9.7-.6 1 .1 1.2-.9.6-.7 1-1.2-.2-1 .5-1-.5-1.2.2-.7-1-.9-.6.1-1.2-.6-1-.9-.7.2-1.2-.4-1.1.9-.7.6-1-.1-1.2.9-.6.7-1 1.2.2 1-.5Z" />
+      <circle cx="12" cy="12" r="3.2" />
+    </IconBase>
+  );
+}
 
 function Button({
   children,
@@ -377,11 +511,23 @@ function App() {
   const changeSub = (id, patch) => update({ subscriptions: state.subscriptions.map(x => x.id === id ? { ...x, ...patch } : x) });
   const deleteSub = (id) => update({ subscriptions: state.subscriptions.filter(x => x.id !== id) });
 
-  const NavButton = ({id, icon: Icon, label}) => (
-    <button onClick={() => setTab(id)} className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-xs ${tab === id ? "bg-slate-950 text-white" : "text-slate-500"}`}>
-      <Icon className="h-5 w-5"/>{label}
+const NavButton = ({ id, icon: Icon, label }) => {
+  const active = tab === id;
+
+  return (
+    <button
+      onClick={() => setTab(id)}
+      className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-medium transition ${
+        active
+          ? "bg-slate-950 text-white shadow-sm"
+          : "text-slate-500 active:bg-slate-100"
+      }`}
+    >
+      <Icon className="h-6 w-6 shrink-0" />
+      <span className="max-w-full truncate">{label}</span>
     </button>
   );
+};
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950">
@@ -415,7 +561,8 @@ function App() {
       </motion.div></div>
 
       {confirmReset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-x-0 bottom-0 border-t bg-white/95 px-2 pb-3 pt-2 backdrop-blur">
+  <div className="mx-auto grid max-w-md grid-cols-6 gap-1 rounded-3xl bg-white p-1 shadow-sm">
           <Card className="w-full max-w-sm rounded-3xl">
             <CardContent className="space-y-4 p-5">
               <div>
@@ -431,7 +578,16 @@ function App() {
         </div>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 border-t bg-white/95 p-2 backdrop-blur"><div className="mx-auto grid max-w-md grid-cols-6 gap-1"><NavButton id="home" icon={WalletCards} label="Главная"/><NavButton id="advance" icon={CalendarDays} label="Аванс"/><NavButton id="salary" icon={ArrowLeftRight} label="ЗП"/><NavButton id="expenses" icon={CreditCard} label="Траты"/><NavButton id="subs" icon={Repeat} label="Подп."/><NavButton id="settings" icon={Settings} label="Настр."/></div></div>
+      <div className="fixed inset-x-0 bottom-0 border-t bg-white/95 p-2 backdrop-blur">
+        <div className="mx-auto grid max-w-md grid-cols-6 gap-1">
+          <NavButton id="home" icon={HomeIcon} label="Главная" />
+          <NavButton id="advance" icon={AdvanceIcon} label="Аванс" />
+          <NavButton id="salary" icon={SalaryIcon} label="ЗП" />
+          <NavButton id="expenses" icon={ExpensesIcon} label="Траты" />
+          <NavButton id="subs" icon={SubscriptionsIcon} label="Подписки" />
+          <NavButton id="settings" icon={SettingsIcon} label="Настройки" />
+        </div>
+      </div>
     </div>
   );
 }
