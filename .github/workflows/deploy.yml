@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: 20
 
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
       - name: Install
         run: npm install
 
@@ -35,7 +38,7 @@ jobs:
         run: npm run build
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
 
