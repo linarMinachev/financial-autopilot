@@ -588,7 +588,10 @@ function PulsePage({ state, update, plan, onBack }) {
 
       <Card className="rounded-2xl">
         <CardContent className="space-y-3 p-4">
-          <Field label="Количество месяцев" value={state.pulseMonths} onChange={(v) => update({ pulseMonths: v })} />
+          {!bufferReady && (
+            <Field label="Количество месяцев" value={state.pulseMonths} onChange={(v) => update({ pulseMonths: v })} />
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <Field label="План подушки" value={state.bufferGoal} onChange={(v) => update({ bufferGoal: v })} />
             <Field label="Факт подушки" value={state.bufferFact} onChange={(v) => update({ bufferFact: v })} />
@@ -623,10 +626,12 @@ function PulsePage({ state, update, plan, onBack }) {
         <div className="space-y-4">
           <Card className="rounded-2xl">
             <CardContent className="space-y-3 p-4">
-              <div className="grid grid-cols-2 gap-3">
-                <PulseMetric label="Можно взять" value={Math.max(0, safeReserve)} state={state} tone={safeReserve >= 0 ? "green" : "red"} />
-                <PulseMetric label="Нужно восстановить" value={Math.max(0, -safeReserve)} state={state} tone={safeReserve < 0 ? "red" : "dark"} />
-              </div>
+              <PulseMetric
+                label="Можно взять без ущерба"
+                value={Math.max(0, safeReserve)}
+                state={state}
+                tone="green"
+              />
 
               <div className="rounded-2xl bg-slate-100 p-3 text-sm text-slate-600">
                 Когда подушка собрана, главный показатель — сколько можно взять на аптеку, стрижку, одежду и разовые траты без ущерба базе подушки. Формула: факт подушки − план подушки.
@@ -636,24 +641,12 @@ function PulsePage({ state, update, plan, onBack }) {
 
           <Card className="rounded-2xl">
             <CardContent className="space-y-4 p-4">
-              <h3 className="text-lg font-semibold">Графики после сбора подушки</h3>
+              <h3 className="text-lg font-semibold">Данные для инвестиций и долгосрока</h3>
 
               <Field
                 label="Месяцев после сбора подушки"
                 value={state.postBufferMonths}
                 onChange={(v) => update({ postBufferMonths: v })}
-              />
-
-              <div className="rounded-2xl bg-slate-100 p-3 text-sm text-slate-600">
-                Общие месяцы стратегии могут быть 5–6, но инвестиции и долгосрок считаются только с момента, когда подушка уже собрана. Например, если подушка собрана на 6-й месяц, здесь укажи 1 месяц.
-              </div>
-
-              <PulseProgress
-                title="Подушка"
-                fact={bufferFact}
-                target={bufferGoal}
-                state={state}
-                hint="База безопасности. Всё выше плана — доступный резерв."
               />
 
               <div className="grid grid-cols-2 gap-3">
@@ -662,6 +655,24 @@ function PulsePage({ state, update, plan, onBack }) {
               </div>
 
               <Field label="Цель долгосрока в год" value={state.longTermYearGoal} onChange={(v) => update({ longTermYearGoal: v })} />
+
+              <div className="rounded-2xl bg-slate-100 p-3 text-sm text-slate-600">
+                Инвестиции и долгосрок считаются только с момента, когда подушка уже собрана. Например, если подушка собрана на 6-й месяц, здесь укажи 1 месяц.
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardContent className="space-y-4 p-4">
+              <h3 className="text-lg font-semibold">Графики после сбора подушки</h3>
+
+              <PulseProgress
+                title="Подушка"
+                fact={bufferFact}
+                target={bufferGoal}
+                state={state}
+                hint="База безопасности. Всё выше плана — доступный резерв."
+              />
 
               <PulseProgress
                 title="Инвестиции"
