@@ -226,6 +226,7 @@ const emptyState = {
   savingsMode: "buffer", // buffer | distributed
   bufferGoal: 300000,
   bufferFact: 0,
+  pulseMonths: 4,
   longTermYearGoal: 144000,
   longTermPaidThisYear: 0,
   hideAmounts: false,
@@ -449,6 +450,103 @@ function BufferProgress({ state }) {
   );
 }
 
+function PulseColumn({ title, value, colorClass, state, maxUp, maxDown, signed = false }) {
+  const numberValue = Number(value || 0);
+  const positive = Math.max(0, numberValue);
+  const negative = Math.max(0, -numberValue);
+  const upHeight = maxUp > 0 ? Math.max(8, (positive / maxUp) * 150) : 8;
+  const downHeight = maxDown > 0 ? Math.max(8, (negative / maxDown) * 70) : 8;
+
+  return (
+    <div className="min-w-0">
+      <div className="mb-2 text-center text-xs font-semibold text-slate-500">{title}</div>
+      <div className="flex h-60 flex-col">
+        <div className="flex h-[160px] items-end justify-center">
+          {positive > 0 ? (
+            <div
+              className={`w-14 rounded-t-2xl ${colorClass}`}
+              style={{ height: `${upHeight}px` }}
+            />
+          ) : (
+            <div className="h-2 w-14 rounded-t-2xl bg-slate-200" />
+          )}
+        </div>
+
+        <div className="h-px bg-slate-300" />
+
+        <div className="flex h-[80px] items-start justify-center">
+          {signed && negative > 0 ? (
+            <div
+              className="w-14 rounded-b-2xl bg-red-500"
+              style={{ height: `${downHeight}px` }}
+            />
+          ) : null}
+        </div>
+      </div>
+      <div className={`text-center text-sm font-bold ${signed && numberValue < 0 ? "text-red-600" : "text-slate-950"}`}>
+        {signed && numberValue < 0 ? `-${amountVisible(state, Math.abs(numberValue))}` : amountVisible(state, numberValue)}
+      </div>
+    </div>
+  );
+}
+
+function PulsePage({ state, update, plan, onBack }) {
+  const months = Math.max(1, Number(state.pulseMonths || 1));
+  const fact = Number(state.bufferFact || 0);
+  const hardTarget = Number(plan.monthlySavings || 0) * months;
+  const softSavings = fact - hardTarget;
+  const maxUp = Math.max(fact, hardTarget, Math.max(softSavings, 0), 1);
+  const maxDown = Math.max(Math.abs(Math.min(softSavings, 0)), 1);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <button onClick={onBack} className="mb-3 text-sm font-semibold text-slate-500">← Главная</button>
+        <h2 className="text-2xl font-semibold">Пульс накоплений</h2>
+        <p className="text-slate-500">Сравнение факта подушки, жёсткого плана и мягких накоплений.</p>
+      </div>
+
+      <Card className="rounded-2xl">
+        <CardContent className="space-y-3 p-4">
+          <Field label="Количество месяцев" value={state.pulseMonths} onChange={(v) => update({ pulseMonths: v })} />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="План подушки" value={state.bufferGoal} onChange={(v) => update({ bufferGoal: v })} />
+            <Field label="Факт подушки" value={state.bufferFact} onChange={(v) => update({ bufferFact: v })} />
+          </div>
+
+          <label className="block space-y-1">
+            <span className="text-sm text-slate-600">Режим накоплений</span>
+            <select
+              value={state.savingsMode}
+              onChange={(e) => update({ savingsMode: e.target.value })}
+              className="w-full rounded-xl border bg-white px-3 py-3"
+            >
+              <option value="buffer">Собираю подушку</option>
+              <option value="distributed">Подушка собрана</option>
+            </select>
+          </label>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardContent className="space-y-4 p-4">
+          <div className="grid grid-cols-3 gap-2">
+            <PulseColumn title="Факт" value={fact} colorClass="bg-slate-950" state={state} maxUp={maxUp} maxDown={maxDown} />
+            <PulseColumn title="Жёсткий план" value={hardTarget} colorClass="bg-slate-700" state={state} maxUp={maxUp} maxDown={maxDown} />
+            <PulseColumn title="Мягкий накоп" value={softSavings} colorClass="bg-emerald-600" state={state} maxUp={maxUp} maxDown={maxDown} signed />
+          </div>
+
+          <div className="rounded-2xl bg-slate-100 p-3 text-sm text-slate-600">
+            Мягкий накоп = факт подушки − 35% от ЗП × количество месяцев. Если число отрицательное, значит подушка ниже жёсткого плана.
+          </div>
+
+          <BufferProgress state={state} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function NoteText({ text }) {
   return (
     <div className="space-y-0.5 text-sm text-slate-500">
@@ -614,6 +712,44 @@ function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const plan = useMemo(() => calcPlan(state), [state]);
 
+  const exportData = () => {
+    const payload = {
+      app: "financial-autopilot",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: state,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `financial-autopilot-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const importData = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || "{}"));
+        const importedState = parsed.data || parsed;
+        update({ ...emptyState, ...importedState, configured: true });
+        alert("Данные импортированы");
+      } catch (error) {
+        alert("Не удалось импортировать файл. Проверь, что это JSON-резервная копия Финансового автопилота.");
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
+  };
+
   if (!state.configured) return <Setup update={update} />;
   if (locked) return <LockScreen state={state} update={update} onUnlock={() => setLocked(false)} />;
 
@@ -757,16 +893,23 @@ const NavButton = ({ id, icon: Icon, label }) => {
           </b>
         </div>
 
-        <div className="pt-2">
-          <BufferProgress state={state} />
-        </div>
+        <BufferProgress state={state} />
       </CardContent>
     </Card>
+
+    <Button
+      onClick={() => setTab("pulse")}
+      variant="secondary"
+      className="h-12 w-full rounded-2xl text-base"
+    >
+      Открыть Пульс
+    </Button>
   </div>
 )}
 
         {tab === "advance" && <Checklist state={state} plan={plan.advancePlan} title="Памятка: аванс" date={state.advanceDay} />}
         {tab === "salary" && <Checklist state={state} plan={plan.salaryPlan} title="Памятка: зарплата" date={state.salaryDay} />}
+        {tab === "pulse" && <PulsePage state={state} update={update} plan={plan} onBack={() => setTab("home")} />}
 
         {tab === "settings" && <div className="space-y-4"><h2 className="text-2xl font-semibold">Настройки</h2><Card className="rounded-2xl"><CardContent className="space-y-3 p-4">
           <Field label="Зарплата в месяц" value={state.salary} onChange={(v)=>update({salary:v})} />
@@ -774,12 +917,14 @@ const NavButton = ({ id, icon: Icon, label }) => {
           <div className="grid grid-cols-2 gap-3"><Field label="День аванса" value={state.advanceDay} onChange={(v)=>update({advanceDay:v})}/><Field label="День зарплаты" value={state.salaryDay} onChange={(v)=>update({salaryDay:v})}/></div>
           <div className="grid grid-cols-2 gap-3"><Field label="Карманные" value={state.pocketPercent} onChange={(v)=>update({pocketPercent:v})} suffix="%"/><Field label="Матушке" value={state.motherPercent} onChange={(v)=>update({motherPercent:v, expenses: state.expenses.map(e => e.name === "Матушке" ? { ...e, amount: v, type: "percentSalary" } : e)})} suffix="%"/></div>
           <Field label="Накопления" value={state.savingsPercent} onChange={(v)=>update({savingsPercent:v})} suffix="%"/>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="План подушки" value={state.bufferGoal} onChange={(v)=>update({bufferGoal:v})}/>
-            <Field label="Факт подушки" value={state.bufferFact} onChange={(v)=>update({bufferFact:v})}/>
-          </div>
           <Field label="Сейчас на Карманных" value={state.pocketCurrent} onChange={(v)=>update({pocketCurrent:v})}/>
-          <select value={state.savingsMode} onChange={(e)=>update({savingsMode:e.target.value})} className="w-full rounded-xl border bg-white px-3 py-3"><option value="buffer">Собираю подушку</option><option value="distributed">Подушка собрана</option></select>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="secondary" onClick={exportData} className="w-full rounded-2xl">Экспорт</Button>
+            <label className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 font-medium text-slate-950 active:scale-[0.98]">
+              Импорт
+              <input type="file" accept="application/json,.json" onChange={importData} className="hidden" />
+            </label>
+          </div>
           <Button variant="secondary" onClick={() => setLocked(true)} className="w-full rounded-2xl">Заблокировать</Button>
           <Button variant="destructive" onClick={() => setConfirmReset(true)} className="w-full rounded-2xl">Стереть данные на этом устройстве</Button>
         </CardContent></Card></div>}
