@@ -227,6 +227,7 @@ const emptyState = {
   bufferGoal: 300000,
   bufferFact: 0,
   pulseMonths: 4,
+  postBufferMonths: 1,
   investmentFact: 0,
   longTermFact: 0,
   longTermYearGoal: 144000,
@@ -549,8 +550,12 @@ function PulseProgress({ title, fact, target, state, hint }) {
 
 function PulsePage({ state, update, plan, onBack }) {
   const months = Math.max(1, Number(state.pulseMonths || 1));
+  const postBufferMonths = Math.max(1, Number(state.postBufferMonths || 1));
   const bufferGoal = Number(state.bufferGoal || 0);
   const bufferFact = Number(state.bufferFact || 0);
+  const investmentFact = Number(state.investmentFact || 0);
+  const longTermFact = Number(state.longTermFact || 0);
+  const assetsTotal = bufferFact + investmentFact + longTermFact;
   const bufferReady = isBufferReady(state);
   const safeReserve = bufferFact - bufferGoal;
 
@@ -559,12 +564,10 @@ function PulsePage({ state, update, plan, onBack }) {
 
   const longTermYearGoal = Number(state.longTermYearGoal || 0);
   const longTermMonthlyPlan = longTermYearGoal / 12;
-  const longTermTarget = longTermMonthlyPlan * months;
-  const longTermFact = Number(state.longTermFact || 0);
+  const longTermTarget = longTermMonthlyPlan * postBufferMonths;
 
   const investmentMonthlyPlan = Math.max(0, Number(plan.monthlySavings || 0) - longTermMonthlyPlan);
-  const investmentTarget = investmentMonthlyPlan * months;
-  const investmentFact = Number(state.investmentFact || 0);
+  const investmentTarget = investmentMonthlyPlan * postBufferMonths;
 
   const maxUp = Math.max(bufferFact, hardTarget, Math.max(softSavings, 0), 1);
   const maxDown = Math.max(Math.abs(Math.min(softSavings, 0)), 1);
@@ -576,6 +579,14 @@ function PulsePage({ state, update, plan, onBack }) {
         <h2 className="text-2xl font-semibold">Пульс</h2>
         <p className="text-slate-500">Автоматический статус подушки и контроль накоплений.</p>
       </div>
+
+      <Card className="rounded-2xl bg-slate-950 text-white">
+        <CardContent className="p-4">
+          <div className="text-sm text-slate-300">Всего в накопительном контуре</div>
+          <div className="mt-1 text-3xl font-bold">{amountVisible(state, assetsTotal)}</div>
+          <div className="mt-2 text-xs text-slate-400">Подушка + Инвестиции + Долгосрок</div>
+        </CardContent>
+      </Card>
 
       <Card className="rounded-2xl">
         <CardContent className="space-y-3 p-4">
@@ -629,6 +640,16 @@ function PulsePage({ state, update, plan, onBack }) {
             <CardContent className="space-y-4 p-4">
               <h3 className="text-lg font-semibold">Графики после сбора подушки</h3>
 
+              <Field
+                label="Месяцев после сбора подушки"
+                value={state.postBufferMonths}
+                onChange={(v) => update({ postBufferMonths: v })}
+              />
+
+              <div className="rounded-2xl bg-slate-100 p-3 text-sm text-slate-600">
+                Общие месяцы стратегии могут быть 5–6, но инвестиции и долгосрок считаются только с момента, когда подушка уже собрана. Например, если подушка собрана на 6-й месяц, здесь укажи 1 месяц.
+              </div>
+
               <PulseProgress
                 title="Подушка"
                 fact={bufferFact}
@@ -649,7 +670,7 @@ function PulsePage({ state, update, plan, onBack }) {
                 fact={investmentFact}
                 target={investmentTarget}
                 state={state}
-                hint={`План: ${amountVisible(state, investmentMonthlyPlan)} в месяц × ${months}`}
+                hint={`План: ${amountVisible(state, investmentMonthlyPlan)} в месяц × ${postBufferMonths}`}
               />
 
               <PulseProgress
@@ -657,7 +678,7 @@ function PulsePage({ state, update, plan, onBack }) {
                 fact={longTermFact}
                 target={longTermTarget}
                 state={state}
-                hint={`План: ${amountVisible(state, longTermMonthlyPlan)} в месяц × ${months}`}
+                hint={`План: ${amountVisible(state, longTermMonthlyPlan)} в месяц × ${postBufferMonths}`}
               />
             </CardContent>
           </Card>
