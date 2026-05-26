@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
 
+
 concurrency:
   group: gh-pages-${{ github.run_id }}
   cancel-in-progress: true
