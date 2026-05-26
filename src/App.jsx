@@ -227,6 +227,8 @@ const emptyState = {
   bufferGoal: 300000,
   bufferFact: 0,
   pulseMonths: 4,
+  investmentFact: 0,
+  longTermFact: 0,
   longTermYearGoal: 144000,
   longTermPaidThisYear: 0,
   hideAmounts: false,
@@ -277,6 +279,16 @@ function amountVisible(state, value) {
   return state.hideAmounts ? "•••••" : money(value);
 }
 
+function isBufferReady(state) {
+  const goal = Number(state.bufferGoal || 0);
+  const fact = Number(state.bufferFact || 0);
+  return goal > 0 && fact >= goal;
+}
+
+function bufferStatusText(state) {
+  return isBufferReady(state) ? "Подушка собрана" : "Собираю подушку";
+}
+
 function calcPlan(s) {
   const advance = s.manualIncome ? Number(s.advanceAmount) : Number(s.salary) * Number(s.advancePercent) / 100;
   const salaryPart = s.manualIncome ? Number(s.salaryAmount) : Number(s.salary) * Number(s.salaryPercent) / 100;
@@ -284,7 +296,9 @@ function calcPlan(s) {
   const pocketTopUp = Math.max(0, pocketLimit - Number(s.pocketCurrent || 0));
   const monthlySavings = Number(s.salary) * Number(s.savingsPercent) / 100;
   const monthsLeft = Math.max(1, 12 - new Date().getMonth());
-  const longTermMonthly = Math.max(0, (Number(s.longTermYearGoal) - Number(s.longTermPaidThisYear || 0)) / monthsLeft);
+  const longTermCurrent = Number((s.longTermFact ?? s.longTermPaidThisYear) || 0);
+  const longTermMonthly = Math.max(0, (Number(s.longTermYearGoal) - longTermCurrent) / monthsLeft);
+  const bufferReady = isBufferReady(s);
 
   const activeExpenses = s.expenses.filter((e) => e.active);
   const byTrigger = (trigger) => activeExpenses.filter((e) => e.trigger === trigger || e.trigger === "both");
@@ -329,7 +343,7 @@ function calcPlan(s) {
     }
 
     if (trigger === "salary") {
-      if (s.savingsMode === "buffer") {
+      if (!bufferReady) {
         items.push({ title: "Перевести в Накопления", amount: monthlySavings, note: `Минимум ${s.savingsPercent}% от зарплаты` });
         used += monthlySavings;
       } else {
@@ -347,7 +361,7 @@ const deficit = Math.max(0, distributed - income);
 
 if (rest > 0) {
   const target =
-    s.savingsMode === "distributed" && trigger === "salary"
+    bufferReady && trigger === "salary"
       ? "Инвест-накопления"
       : "Накопления";
 
@@ -385,6 +399,7 @@ return {
     totalFree,
     totalDeficit,
     netFree,
+    bufferReady,
   };
 }
 
@@ -490,20 +505,76 @@ function PulseColumn({ title, value, colorClass, state, maxUp, maxDown, signed =
   );
 }
 
+function PulseMetric({ label, value, state, tone = "dark" }) {
+  const toneClass = tone === "green" ? "text-emerald-700" : tone === "red" ? "text-red-600" : "text-slate-950";
+  return (
+    <div className="rounded-2xl bg-slate-100 p-3">
+      <div className="text-xs font-medium text-slate-500">{label}</div>
+      <div className={`mt-1 text-lg font-bold ${toneClass}`}>{amountVisible(state, value)}</div>
+    </div>
+  );
+}
+
+function PulseProgress({ title, fact, target, state, hint }) {
+  const factValue = Number(fact || 0);
+  const targetValue = Number(target || 0);
+  const percent = targetValue > 0 ? Math.min(100, Math.max(0, (factValue / targetValue) * 100)) : 0;
+  const delta = factValue - targetValue;
+  const isDeficit = delta < 0;
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="font-semibold">{title}</div>
+          {hint && <div className="text-xs text-slate-500">{hint}</div>}
+        </div>
+        <div className="text-right text-sm font-semibold">
+          {amountVisible(state, factValue)} / {amountVisible(state, targetValue)}
+        </div>
+      </div>
+
+      <div className="h-3 overflow-hidden rounded-full border-2 border-slate-950 bg-white">
+        <div className="h-full rounded-full bg-slate-950 transition-all" style={{ width: `${percent}%` }} />
+      </div>
+
+      <div className={`text-xs font-semibold ${isDeficit ? "text-red-600" : "text-emerald-700"}`}>
+        {isDeficit
+          ? `Не хватает: ${amountVisible(state, Math.abs(delta))}`
+          : `Сверх плана: ${amountVisible(state, delta)}`}
+      </div>
+    </div>
+  );
+}
+
 function PulsePage({ state, update, plan, onBack }) {
   const months = Math.max(1, Number(state.pulseMonths || 1));
-  const fact = Number(state.bufferFact || 0);
+  const bufferGoal = Number(state.bufferGoal || 0);
+  const bufferFact = Number(state.bufferFact || 0);
+  const bufferReady = isBufferReady(state);
+  const safeReserve = bufferFact - bufferGoal;
+
   const hardTarget = Number(plan.monthlySavings || 0) * months;
-  const softSavings = fact - hardTarget;
-  const maxUp = Math.max(fact, hardTarget, Math.max(softSavings, 0), 1);
+  const softSavings = bufferFact - hardTarget;
+
+  const longTermYearGoal = Number(state.longTermYearGoal || 0);
+  const longTermMonthlyPlan = longTermYearGoal / 12;
+  const longTermTarget = longTermMonthlyPlan * months;
+  const longTermFact = Number(state.longTermFact || 0);
+
+  const investmentMonthlyPlan = Math.max(0, Number(plan.monthlySavings || 0) - longTermMonthlyPlan);
+  const investmentTarget = investmentMonthlyPlan * months;
+  const investmentFact = Number(state.investmentFact || 0);
+
+  const maxUp = Math.max(bufferFact, hardTarget, Math.max(softSavings, 0), 1);
   const maxDown = Math.max(Math.abs(Math.min(softSavings, 0)), 1);
 
   return (
     <div className="space-y-4">
       <div>
         <button onClick={onBack} className="mb-3 text-sm font-semibold text-slate-500">← Главная</button>
-        <h2 className="text-2xl font-semibold">Пульс накоплений</h2>
-        <p className="text-slate-500">Сравнение факта подушки, жёсткого плана и мягких накоплений.</p>
+        <h2 className="text-2xl font-semibold">Пульс</h2>
+        <p className="text-slate-500">Автоматический статус подушки и контроль накоплений.</p>
       </div>
 
       <Card className="rounded-2xl">
@@ -514,35 +585,84 @@ function PulsePage({ state, update, plan, onBack }) {
             <Field label="Факт подушки" value={state.bufferFact} onChange={(v) => update({ bufferFact: v })} />
           </div>
 
-          <label className="block space-y-1">
-            <span className="text-sm text-slate-600">Режим накоплений</span>
-            <select
-              value={state.savingsMode}
-              onChange={(e) => update({ savingsMode: e.target.value })}
-              className="w-full rounded-xl border bg-white px-3 py-3"
-            >
-              <option value="buffer">Собираю подушку</option>
-              <option value="distributed">Подушка собрана</option>
-            </select>
-          </label>
+          <div className={`rounded-2xl p-3 ${bufferReady ? "bg-emerald-50" : "bg-slate-100"}`}>
+            <div className="text-xs font-medium text-slate-500">Статус</div>
+            <div className={`mt-1 text-lg font-bold ${bufferReady ? "text-emerald-700" : "text-slate-950"}`}>
+              {bufferStatusText(state)}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl">
-        <CardContent className="space-y-4 p-4">
-          <div className="grid grid-cols-3 gap-2">
-            <PulseColumn title="Факт" value={fact} colorClass="bg-slate-950" state={state} maxUp={maxUp} maxDown={maxDown} />
-            <PulseColumn title="Жёсткий план" value={hardTarget} colorClass="bg-slate-700" state={state} maxUp={maxUp} maxDown={maxDown} />
-            <PulseColumn title="Мягкий накоп" value={softSavings} colorClass="bg-emerald-600" state={state} maxUp={maxUp} maxDown={maxDown} signed />
-          </div>
+      {!bufferReady ? (
+        <Card className="rounded-2xl">
+          <CardContent className="space-y-4 p-4">
+            <div className="grid grid-cols-3 gap-2">
+              <PulseColumn title="Факт" value={bufferFact} colorClass="bg-slate-950" state={state} maxUp={maxUp} maxDown={maxDown} />
+              <PulseColumn title="Жёсткий план" value={hardTarget} colorClass="bg-slate-700" state={state} maxUp={maxUp} maxDown={maxDown} />
+              <PulseColumn title="Мягкий накоп" value={softSavings} colorClass="bg-emerald-600" state={state} maxUp={maxUp} maxDown={maxDown} signed />
+            </div>
 
-          <div className="rounded-2xl bg-slate-100 p-3 text-sm text-slate-600">
-            Мягкий накоп = факт подушки − 35% от ЗП × количество месяцев. Если число отрицательное, значит подушка ниже жёсткого плана.
-          </div>
+            <div className="rounded-2xl bg-slate-100 p-3 text-sm text-slate-600">
+              Пока подушка не собрана, Пульс сравнивает факт подушки с жёстким планом: 35% от ЗП × количество месяцев. Мягкий накоп показывает, идёшь ли ты выше или ниже обязательного накопа.
+            </div>
 
-          <BufferProgress state={state} />
-        </CardContent>
-      </Card>
+            <BufferProgress state={state} />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          <Card className="rounded-2xl">
+            <CardContent className="space-y-3 p-4">
+              <div className="grid grid-cols-2 gap-3">
+                <PulseMetric label="Можно взять" value={Math.max(0, safeReserve)} state={state} tone={safeReserve >= 0 ? "green" : "red"} />
+                <PulseMetric label="Нужно восстановить" value={Math.max(0, -safeReserve)} state={state} tone={safeReserve < 0 ? "red" : "dark"} />
+              </div>
+
+              <div className="rounded-2xl bg-slate-100 p-3 text-sm text-slate-600">
+                Когда подушка собрана, главный показатель — сколько можно взять на аптеку, стрижку, одежду и разовые траты без ущерба базе подушки. Формула: факт подушки − план подушки.
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardContent className="space-y-4 p-4">
+              <h3 className="text-lg font-semibold">Графики после сбора подушки</h3>
+
+              <PulseProgress
+                title="Подушка"
+                fact={bufferFact}
+                target={bufferGoal}
+                state={state}
+                hint="База безопасности. Всё выше плана — доступный резерв."
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Факт инвестиций" value={state.investmentFact} onChange={(v) => update({ investmentFact: v })} />
+                <Field label="Факт долгосрока" value={state.longTermFact} onChange={(v) => update({ longTermFact: v, longTermPaidThisYear: v })} />
+              </div>
+
+              <Field label="Цель долгосрока в год" value={state.longTermYearGoal} onChange={(v) => update({ longTermYearGoal: v })} />
+
+              <PulseProgress
+                title="Инвестиции"
+                fact={investmentFact}
+                target={investmentTarget}
+                state={state}
+                hint={`План: ${amountVisible(state, investmentMonthlyPlan)} в месяц × ${months}`}
+              />
+
+              <PulseProgress
+                title="Долгосрок"
+                fact={longTermFact}
+                target={longTermTarget}
+                state={state}
+                hint={`План: ${amountVisible(state, longTermMonthlyPlan)} в месяц × ${months}`}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
@@ -887,9 +1007,7 @@ const NavButton = ({ id, icon: Icon, label }) => {
         <div className="flex justify-between">
           <span>Режим</span>
           <b>
-            {state.savingsMode === "buffer"
-              ? "Собираю подушку"
-              : "Подушка собрана"}
+            {bufferStatusText(state)}
           </b>
         </div>
 
@@ -981,6 +1099,5 @@ const NavButton = ({ id, icon: Icon, label }) => {
     </div>
   );
 }
-
 
 export default App;
