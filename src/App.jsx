@@ -580,19 +580,11 @@ function PulsePage({ state, update, plan, onBack }) {
         <p className="text-slate-500">Автоматический статус подушки и контроль накоплений.</p>
       </div>
 
-<div className="rounded-2xl bg-slate-950 p-4 text-white shadow-sm">
-  <div className="text-sm text-slate-300">
-    Всего в накопительном контуре
-  </div>
-
-  <div className="mt-3 text-3xl font-bold">
-    {amountVisible(state, totalSavingsCircuit)}
-  </div>
-
-  <div className="mt-3 text-sm text-slate-300">
-    Подушка + Инвестиции + Долгосрок
-  </div>
-</div>
+      <div className="rounded-2xl bg-slate-950 p-4 text-white shadow-sm">
+        <div className="text-sm text-slate-300">Всего в накопительном контуре</div>
+        <div className="mt-1 text-3xl font-bold">{amountVisible(state, assetsTotal)}</div>
+        <div className="mt-2 text-xs text-slate-400">Подушка + Инвестиции + Долгосрок</div>
+      </div>
 
       <Card className="rounded-2xl">
         <CardContent className="space-y-3 p-4">
