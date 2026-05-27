@@ -280,6 +280,16 @@ function amountVisible(state, value) {
   return state.hideAmounts ? "•••••" : money(value);
 }
 
+
+function accountDisplayName(account) {
+  if (account === "ЕДА" || account === "Яндекс") return "Яндекс";
+  return account || "Оплатить сразу";
+}
+
+function monthlySubscriptionAmount(subscription) {
+  return Number(subscription.price || 0) / Math.max(1, Number(subscription.periodMonths || 1));
+}
+
 function isBufferReady(state) {
   const goal = Number(state.bufferGoal || 0);
   const fact = Number(state.bufferFact || 0);
@@ -323,22 +333,31 @@ function calcPlan(s) {
     });
 
     Array.from(grouped.values()).forEach((g) => {
+      const displayAccount = accountDisplayName(g.account);
       items.push({
-        title: g.account === "Оплатить сразу" ? "Оплатить сразу" : `Перевести в ${g.account}`,
+        title: displayAccount === "Оплатить сразу" ? "Оплатить сразу" : `Перевести в ${displayAccount}`,
         amount: g.amount,
         note: g.details.map((d) => `${d.name} — ${money(d.amount)}`).join("\\n"),
       });
       used += g.amount;
     });
 
+    const triggerSubscriptions = s.subscriptions.filter(
+      (x) => x.active && (x.trigger || "advance") === trigger
+    );
+    const subReserve = triggerSubscriptions.reduce((sum, x) => sum + monthlySubscriptionAmount(x), 0);
+    if (subReserve > 0) {
+      items.push({
+        title: "Перевести в Подписки",
+        amount: subReserve,
+        note: triggerSubscriptions
+          .map((x) => `${x.name} — ${money(monthlySubscriptionAmount(x))}`)
+          .join("\\n"),
+      });
+      used += subReserve;
+    }
+
     if (trigger === "advance") {
-      const subReserve = s.subscriptions
-        .filter((x) => x.active)
-        .reduce((sum, x) => sum + Number(x.price || 0) / Math.max(1, Number(x.periodMonths || 1)), 0);
-      if (subReserve > 0) {
-        items.push({ title: "Перевести в Подписки", amount: subReserve, note: "Резерв на годовые/долгие подписки" });
-        used += subReserve;
-      }
       items.push({ title: "Пополнить Карманные", amount: pocketTopUp, note: `Лимит ${money(pocketLimit)}, сейчас ${money(s.pocketCurrent)}` });
       used += pocketTopUp;
     }
@@ -824,33 +843,64 @@ function TriggerSummary({ state, plan }) {
 
 function Checklist({ state, plan, title, date }) {
   const [done, setDone] = useState({});
-return (
-  <div className="space-y-4">
-    <div>
-      <h2 className="text-2xl font-semibold">{title}</h2>
-      <p className="text-slate-500">
-        Средняя дата: {date} число. Поступило: {amountVisible(state, plan.income)}
-      </p>
-    </div>
+  const selectedTotal = plan.items.reduce(
+    (sum, it, idx) => sum + (done[idx] ? Number(it.amount || 0) : 0),
+    0
+  );
 
-    <TriggerSummary state={state} plan={plan} />
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-semibold">{title}</h2>
+        <p className="text-slate-500">
+          Средняя дата: {date} число. Поступило: {amountVisible(state, plan.income)}
+        </p>
+      </div>
+
+      <TriggerSummary state={state} plan={plan} />
+
       <div className="space-y-3">
         {plan.items.map((it, idx) => (
-          <Card key={idx} className="rounded-2xl"><CardContent className="flex gap-3 p-4">
-            <button onClick={() => setDone({ ...done, [idx]: !done[idx] })} className="pt-1">
-              {done[idx] ? <CheckCircle2 className="h-6 w-6"/> : <div className="h-6 w-6 rounded-full border-2"/>}
-            </button>
-            <div className="flex-1"><div className="flex items-start justify-between gap-3">
-              <div className={done[idx] ? "line-through text-slate-400" : ""}>
-                <div className="font-medium">{it.title}</div>
-                <NoteText text={it.note} />
+          <Card key={idx} className="rounded-2xl">
+            <CardContent className="flex gap-3 p-4">
+              <button onClick={() => setDone({ ...done, [idx]: !done[idx] })} className="pt-1">
+                {done[idx] ? <CheckCircle2 className="h-6 w-6" /> : <div className="h-6 w-6 rounded-full border-2" />}
+              </button>
+
+              <div className="flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className={done[idx] ? "line-through text-slate-400" : ""}>
+                    <div className="font-medium">{it.title}</div>
+                    <NoteText text={it.note} />
+                  </div>
+
+                  <div className="whitespace-nowrap text-lg font-semibold">
+                    {amountVisible(state, it.amount)}
+                  </div>
+                </div>
               </div>
-              <div className="whitespace-nowrap text-lg font-semibold">{amountVisible(state, it.amount)}</div>
-            </div></div>
-          </CardContent></Card>
+            </CardContent>
+          </Card>
         ))}
       </div>
-      <Card className="rounded-2xl bg-slate-950 text-white"><CardContent className="p-4"><div className="flex justify-between"><span>После распределения на Основной</span><b>0 ₽</b></div></CardContent></Card>
+
+      <Card className="rounded-2xl bg-slate-950 text-white">
+        <CardContent className="p-4">
+          <div className="flex justify-between">
+            <span>После распределения на Основной</span>
+            <b>0 ₽</b>
+          </div>
+        </CardContent>
+      </Card>
+
+      {selectedTotal > 0 && (
+        <div className="fixed inset-x-0 bottom-[112px] z-40 px-4">
+          <div className="mx-auto flex max-w-md items-center justify-between rounded-2xl bg-slate-950 px-4 py-3 text-white shadow-lg">
+            <span className="text-sm text-slate-300">Выбрано переводов</span>
+            <b className="text-lg">{amountVisible(state, selectedTotal)}</b>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -860,6 +910,7 @@ function App() {
   const [locked, setLocked] = useState(Boolean(state.configured && state.pin));
   const [tab, setTab] = useState("home");
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const plan = useMemo(() => calcPlan(state), [state]);
 
   const exportData = () => {
@@ -903,10 +954,20 @@ function App() {
   if (!state.configured) return <Setup update={update} />;
   if (locked) return <LockScreen state={state} update={update} onUnlock={() => setLocked(false)} />;
 
-  const addExpense = () => update({ expenses: [...state.expenses, { id: safeId(), name: "Новая трата", amount: "", account: "ЕДА", trigger: "advance", type: "fixed", active: true }] });
+  const addExpense = () => update({
+    expenses: [
+      { id: safeId(), name: "Новая трата", amount: "", account: "Яндекс", trigger: "advance", type: "fixed", active: true },
+      ...state.expenses,
+    ],
+  });
   const changeExpense = (id, patch) => update({ expenses: state.expenses.map(e => e.id === id ? { ...e, ...patch } : e) });
   const deleteExpense = (id) => update({ expenses: state.expenses.filter(e => e.id !== id) });
-  const addSub = () => update({ subscriptions: [...state.subscriptions, { id: safeId(), name: "Новая подписка", price: "", periodMonths: 12, active: true }] });
+  const addSub = () => update({
+    subscriptions: [
+      { id: safeId(), name: "Новая подписка", price: "", periodMonths: 12, trigger: "advance", active: true },
+      ...state.subscriptions,
+    ],
+  });
   const changeSub = (id, patch) => update({ subscriptions: state.subscriptions.map(x => x.id === id ? { ...x, ...patch } : x) });
   const deleteSub = (id) => update({ subscriptions: state.subscriptions.filter(x => x.id !== id) });
 
@@ -1077,9 +1138,109 @@ const NavButton = ({ id, icon: Icon, label }) => {
           <Button variant="destructive" onClick={() => setConfirmReset(true)} className="w-full rounded-2xl">Стереть данные на этом устройстве</Button>
         </CardContent></Card></div>}
 
-        {tab === "expenses" && <div className="space-y-4"><div className="flex items-center justify-between"><h2 className="text-2xl font-semibold">Расходы</h2><Button onClick={addExpense} size="sm" className="rounded-xl"><Plus className="mr-1 h-4 w-4"/>Добавить</Button></div>{state.expenses.map(e=><Card key={e.id} className="rounded-2xl"><CardContent className="space-y-3 p-4"><div className="flex gap-2"><input value={e.name} onChange={(ev)=>changeExpense(e.id,{name:ev.target.value})} className="flex-1 rounded-xl border px-3 py-2"/><button onClick={()=>deleteExpense(e.id)}><Trash2 className="h-5 w-5 text-slate-400"/></button></div><div className="grid grid-cols-2 gap-2"><NumericInput value={e.amount} onChange={(v)=>changeExpense(e.id,{amount:v})} className="rounded-xl border px-3 py-2"/><select value={e.trigger} onChange={(ev)=>changeExpense(e.id,{trigger:ev.target.value})} className="rounded-xl border px-3 py-2"><option value="advance">Аванс</option><option value="salary">Зарплата</option><option value="both">Аванс + ЗП</option></select></div><div className="grid grid-cols-2 gap-2"><select value={e.account} onChange={(ev)=>changeExpense(e.id,{account:ev.target.value})} className="rounded-xl border px-3 py-2"><option>ЕДА</option><option>ЕПС</option><option>Оплатить сразу</option><option>Подписки</option><option>Накопления</option></select><select value={e.type} onChange={(ev)=>changeExpense(e.id,{type:ev.target.value})} className="rounded-xl border px-3 py-2"><option value="fixed">Сумма</option><option value="split">Поровну</option><option value="percentSalary">% от ЗП</option></select></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={e.active} onChange={(ev)=>changeExpense(e.id,{active:ev.target.checked})}/>Активно</label></CardContent></Card>)}</div>}
+        {tab === "expenses" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold">Расходы</h2>
+              <Button onClick={addExpense} size="sm" className="rounded-xl">
+                <Plus className="mr-1 h-4 w-4" />Добавить
+              </Button>
+            </div>
 
-        {tab === "subs" && <div className="space-y-4"><div className="flex items-center justify-between"><h2 className="text-2xl font-semibold">Подписки</h2><Button onClick={addSub} size="sm" className="rounded-xl"><Plus className="mr-1 h-4 w-4"/>Добавить</Button></div>{state.subscriptions.map(x=><Card key={x.id} className="rounded-2xl"><CardContent className="space-y-3 p-4"><div className="flex gap-2"><input value={x.name} onChange={(ev)=>changeSub(x.id,{name:ev.target.value})} className="flex-1 rounded-xl border px-3 py-2"/><button onClick={()=>deleteSub(x.id)}><Trash2 className="h-5 w-5 text-slate-400"/></button></div><div className="grid grid-cols-2 gap-2"><NumericInput value={x.price} onChange={(v)=>changeSub(x.id,{price:v})} className="rounded-xl border px-3 py-2"/><NumericInput value={x.periodMonths} onChange={(v)=>changeSub(x.id,{periodMonths:v})} className="rounded-xl border px-3 py-2"/></div><div className="flex justify-between rounded-xl bg-slate-100 p-3"><span>В месяц</span><b>{amountVisible(state, Number(x.price||0)/Math.max(1,Number(x.periodMonths||1)))}</b></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={x.active} onChange={(ev)=>changeSub(x.id,{active:ev.target.checked})}/>Активна</label></CardContent></Card>)}</div>}
+            {state.expenses.map((e) => (
+              <Card key={e.id} className="rounded-2xl">
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex gap-2">
+                    <input
+                      value={e.name}
+                      onChange={(ev) => changeExpense(e.id, { name: ev.target.value })}
+                      className="flex-1 rounded-xl border px-3 py-2"
+                    />
+                    <button onClick={() => setConfirmDelete({ type: "expense", id: e.id, name: e.name })}>
+                      <Trash2 className="h-5 w-5 text-slate-400" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <NumericInput value={e.amount} onChange={(v) => changeExpense(e.id, { amount: v })} className="rounded-xl border px-3 py-2" />
+                    <select value={e.trigger} onChange={(ev) => changeExpense(e.id, { trigger: ev.target.value })} className="rounded-xl border px-3 py-2">
+                      <option value="advance">Аванс</option>
+                      <option value="salary">Зарплата</option>
+                      </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={e.account === "ЕДА" ? "Яндекс" : e.account} onChange={(ev) => changeExpense(e.id, { account: ev.target.value })} className="rounded-xl border px-3 py-2">
+                      <option>Яндекс</option>
+                      <option>ЕПС</option>
+                      <option>Оплатить сразу</option>
+                      <option>Подписки</option>
+                      <option>Накопления</option>
+                    </select>
+                    <select value={e.type} onChange={(ev) => changeExpense(e.id, { type: ev.target.value })} className="rounded-xl border px-3 py-2">
+                      <option value="fixed">Сумма</option>
+                      <option value="split">Поровну</option>
+                      <option value="percentSalary">% от ЗП</option>
+                    </select>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={e.active} onChange={(ev) => changeExpense(e.id, { active: ev.target.checked })} />
+                    Активно
+                  </label>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {tab === "subs" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold">Подписки</h2>
+              <Button onClick={addSub} size="sm" className="rounded-xl">
+                <Plus className="mr-1 h-4 w-4" />Добавить
+              </Button>
+            </div>
+
+            {state.subscriptions.map((x) => (
+              <Card key={x.id} className="rounded-2xl">
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex gap-2">
+                    <input
+                      value={x.name}
+                      onChange={(ev) => changeSub(x.id, { name: ev.target.value })}
+                      className="flex-1 rounded-xl border px-3 py-2"
+                    />
+                    <button onClick={() => setConfirmDelete({ type: "subscription", id: x.id, name: x.name })}>
+                      <Trash2 className="h-5 w-5 text-slate-400" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <NumericInput value={x.price} onChange={(v) => changeSub(x.id, { price: v })} className="rounded-xl border px-3 py-2" />
+                    <NumericInput value={x.periodMonths} onChange={(v) => changeSub(x.id, { periodMonths: v })} className="rounded-xl border px-3 py-2" />
+                  </div>
+
+                  <select value={x.trigger || "advance"} onChange={(ev) => changeSub(x.id, { trigger: ev.target.value })} className="w-full rounded-xl border px-3 py-2">
+                    <option value="advance">С аванса</option>
+                    <option value="salary">С зарплаты</option>
+                  </select>
+
+                  <div className="flex justify-between rounded-xl bg-slate-100 p-3">
+                    <span>В месяц</span>
+                    <b>{amountVisible(state, monthlySubscriptionAmount(x))}</b>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={x.active} onChange={(ev) => changeSub(x.id, { active: ev.target.checked })} />
+                    Активна
+                  </label>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </motion.div></div>
 
       {confirmReset && (
@@ -1109,6 +1270,44 @@ const NavButton = ({ id, icon: Icon, label }) => {
                   onClick={reset}
                 >
                   Да, стереть
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <Card className="w-full max-w-sm rounded-3xl">
+            <CardContent className="space-y-4 p-5">
+              <div>
+                <h3 className="text-xl font-semibold">Удалить запись?</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {confirmDelete.name ? `«${confirmDelete.name}» будет удалена. ` : "Запись будет удалена. "}
+                  Отменить действие нельзя.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="secondary"
+                  className="rounded-2xl"
+                  onClick={() => setConfirmDelete(null)}
+                >
+                  Нет
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  className="rounded-2xl"
+                  onClick={() => {
+                    if (confirmDelete.type === "expense") deleteExpense(confirmDelete.id);
+                    if (confirmDelete.type === "subscription") deleteSub(confirmDelete.id);
+                    setConfirmDelete(null);
+                  }}
+                >
+                  Да, удалить
                 </Button>
               </div>
             </CardContent>
